@@ -1,0 +1,23 @@
+# IDE files
+.idea/
+
+# Build output
+out/
+
+# Logs
+logs/
+
+# Node modules (if applicable for TypeScript project)
+node_modules/
+
+# Build artifacts
+dist/
+
+output/*
+
+# macOS system files
+.DS_Store
+**/.DS_Store
+
+# Claude 4 Instructions
+ClaudeContext/
