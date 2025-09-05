@@ -1,684 +1,398 @@
-# Real-Time Voice Chat with AWS Bedrock Nova Sonic + Advanced Tool System
+# QSR AI Drive-Thru Experience with Amazon Nova Foundation Models
 
-A React-based real-time voice chat application that demonstrates AWS Bedrock's bidirectional streaming capabilities using the Nova Sonic model. This application enables natural voice conversations with AI through WebSocket connections, featuring real-time audio processing, speech-to-text, text-to-speech, streaming responses, **AWS Cognito authentication**, and a **comprehensive tool system** that allows AI to interact with the application through custom JavaScript tools.
+## Table of Contents
+- 🏛️ [Architecture Overview](#architecture-overview)
+- 📋 [Solution Overview](#overview) 
+- 💰 [Cost](#cost) 
+- ✅ [Prerequisites](#prerequisites)
+- 🚀 [Deployment Steps](#deployment-steps)
+- 🔍 [Deployment Validation](#deployment-validation)
+- 📘 [Running the Guidance](#running-the-guidance)
+- 🔒 [Security Considerations](#security-considerations)
+- 🚀 [Performance Optimization](#performance-optimization)
+- ➡️ [Next Steps](#next-steps)
+- 🧹 [Cleanup](#cleanup)
+- ❓ [FAQ, Known Issues, Additional Considerations, and Limitations](#faq-known-issues-additional-considerations-and-limitations)
+- 📝 [Revisions](#revisions)
+- ⚠️ [Notices](#notices)
+- 👥 [Authors](#authors)
 
-## 🌟 Features
+## Architecture Overview
 
-### Core Voice Chat Features
-- **Real-time Voice Interaction**: Speak naturally and receive immediate AI responses
-- **Bidirectional Audio Streaming**: Simultaneous audio input and output processing
-- **Live Chat Interface**: Visual chat history with real-time message updates
-- **Audio Processing**: Browser-based audio capture, processing, and playbook
-- **Session Management**: Automatic session lifecycle management with cleanup
-- **Cross-browser Support**: Optimized for both Chromium-based browsers and Firefox
-- **Interruption Handling**: Support for conversation interruptions and barge-in scenarios
-- **AWS Cognito Authentication**: Secure credential management with user authentication
-- **Configuration Management**: User-friendly setup with persistent settings
-- **React Architecture**: Modern React with hooks and TypeScript
+The QSR AI Drive-Thru Experience implements a comprehensive voice-enabled ordering system using Amazon Nova Foundation Models:
 
-### 🚀 Advanced Tool System Features
-- **Custom Tool Creation**: Create JavaScript tools that AI can execute during conversations
-- **Component Auto-Discovery**: UI components automatically register themselves for tool access
-- **Professional Documentation**: Monaco Editor-powered documentation with syntax highlighting
-- **Live Component Docs**: Real-time component documentation with search, filtering, and copy functionality
-- **Safe Code Execution**: Secure JavaScript execution using Function constructor (no eval!)
-- **Tool Integration**: Tools seamlessly integrate with AWS Bedrock streaming
-- **Rich Execution Context**: Tools have access to axios, React, utilities, and UI components
-- **Professional Development Experience**: IDE-like tool creation with Monaco Editor syntax highlighting
-- **Toast Notification System**: Professional toast notifications with programmatic control
-- **API Gateway Examples**: Production-ready examples for Cognito authentication and API integration
+1. **Frontend Application**: React-based voice chat interface with real-time audio processing
+2. **Authentication**: Amazon Cognito manages user authentication and provides temporary AWS credentials
+3. **AI Voice Processing**: Amazon Bedrock Nova Sonic handles bidirectional audio streaming for natural conversations
+4. **Tool System**: Advanced JavaScript execution environment for dynamic menu management and order processing
+5. **Auto-Initiation**: Pre-recorded audio triggers to start conversations automatically
+6. **Order Management**: Shopping cart and menu display with real-time pricing and customization
 
-## 🏗️ Architecture
+This architecture provides a complete drive-thru experience with enterprise-grade security and natural voice interactions.
 
-The application consists of several key components organized into layers:
+## Solution Overview
 
-### React Components
-- **App** (`src/App.tsx`): Main application component with state management, authentication flow, and tool system integration
-- **SettingsComponent** (`src/components/SettingsComponent.tsx`): Configuration interface with tabbed settings including tool management
-- **AuthComponent** (`src/components/AuthComponent.tsx`): AWS Cognito authentication wrapper
-- **ChatContainer** (`src/components/ChatContainer.tsx`): Displays chat history and messages
-- **StatusIndicator** (`src/components/StatusIndicator.tsx`): Shows connection and processing status
-- **Controls** (`src/components/Controls.tsx`): Start/stop streaming buttons
-- **ThinkingIndicator** (`src/components/ThinkingIndicator.tsx`): Animated thinking indicators
-- **ComponentDocumentation** (`src/components/ComponentDocumentation.tsx`): Live documentation system for registered components
+This solution demonstrates how to build a production-ready AI-powered drive-thru ordering system using Amazon Nova Foundation Models. The application addresses the need for QSR (Quick Service Restaurant) chains to deploy intelligent voice ordering systems with minimal setup.
 
-### Core SDK Components
-- **Bedrock Client** (`src/lib/sdk/client.ts`): Manages AWS Bedrock bidirectional streaming with lazy initialization
-- **Events Proxy** (`src/lib/sdk/events_proxy.ts`): Handles event-driven communication with credential management and tool registration
-- **Audio Player** (`src/lib/play/AudioPlayer.js`): Manages audio playbook with worklets
-- **Settings Manager** (`src/lib/util/SettingsManager.ts`): Handles configuration persistence and validation
-- **Chat History Manager** (`src/lib/util/ChatHistoryManager.js`): Maintains conversation state
+**What**: A React-based voice ordering interface that connects directly to Amazon Bedrock Nova Sonic for natural conversation flow.
 
-### 🔧 Tool System Components
-- **ToolContext** (`src/contexts/ToolContext.tsx`): React Context for tool management and component discovery
-- **ToolExecutor** (`src/lib/tools/ToolExecutor.ts`): Safe JavaScript execution engine with AWS Bedrock integration
-- **useAutoRegisterComponent** (`src/hooks/useAutoRegisterComponent.ts`): Hook for automatic component registration
-- **Component Registry**: Automatic discovery system for UI components and their methods
+**Who**: QSR operators, restaurant chains, and developers looking to implement AI-powered drive-thru experiences.
+
+**Why**: To provide a complete solution for deploying intelligent voice ordering systems that improve customer experience and operational efficiency.
+
+The solution leverages Amazon Bedrock's bidirectional streaming capabilities while implementing secure access through Amazon Cognito's User and Identity Pools for credential management.
 
 ### Key Features
-- **Lazy Client Initialization**: AWS Bedrock client created only when needed with fresh credentials
-- **Authentication Flow**: Progressive configuration → authentication → audio initialization → tool system activation
-- **Session Lifecycle**: Automatic session creation, initialization, cleanup, and tool registration
-- **Visual Feedback**: Real-time status indicators and thinking animations
-- **Error Handling**: Comprehensive error management and recovery
-- **Tool Integration**: Seamless integration between custom tools and voice AI conversations
 
-## 🛠️ Tool System Deep Dive
+- **🎤 Real-time Voice Interaction**: Natural conversation flow with immediate AI responses
+- **🚗 Auto-Initiate Conversations**: Pre-recorded greetings trigger automatically when customers arrive
+- **🛒 Shopping Cart Integration**: Full order management with pricing, customization, and checkout
+- **🏢 Editable Company Branding**: Customizable company names and branding throughout the interface
+- **🔧 Advanced Tool System**: JavaScript-based tools for menu management, order processing, and integrations
+- **📱 Professional UI**: Monaco Editor integration, toast notifications, and responsive design
+- **🔐 Enterprise Security**: AWS Cognito authentication with temporary credential management
 
-### How the Tool System Works
+### Demo
 
-#### 1. **Component Auto-Discovery**
-Components automatically register themselves using the `useAutoRegisterComponent` hook:
+*[Demo video or screenshots would go here]*
 
-```typescript
-useAutoRegisterComponent({
-  name: 'chat',
-  description: 'Chat history management and message operations',
-  category: 'ui',
-  methods: {
-    addMessage: createMethodDescriptor(
-      (message: string, role: string = 'system') => {
-        // Implementation
-      },
-      'Add a message to the chat history',
-      [
-        { name: 'message', type: 'string', description: 'The message content', required: true },
-        { name: 'role', type: 'string', description: 'The message role', required: false }
-      ]
-    ),
-    // More methods...
-  }
-});
-```
+### High-Level Steps:
 
-#### 2. **Tool Creation Process**
-1. User creates a tool in Settings → Agent Behavior
-2. Tool configuration stored in localStorage
-3. During session initialization, tools are loaded and processed
-4. Tools are registered with AWS Bedrock client
-5. AI can call tools during conversations
+1. Customer approaches the drive-thru and the system auto-initiates with a pre-recorded greeting
+2. Amazon Nova Sonic processes the customer's voice input in real-time
+3. AI responds naturally while executing tools to manage menu display and shopping cart
+4. Order details are processed and confirmed through voice interaction
+5. Final order is submitted for kitchen preparation and payment processing
 
-#### 3. **Tool Execution Flow**
-```
-AI decides to use tool → AWS Bedrock calls tool → ToolExecutor executes JavaScript → Tool manipulates UI → Result returned to AI
-```
+## Cost
 
-### Available Component Methods
+You are responsible for the cost of the AWS services used while running this solution.
 
-#### **App Component** (`components.app`)
-- `setStatus(newStatus)` - Update application status message
-- `getStatus()` - Get current application status
-- `startStreaming()` - Start voice streaming session
-- `stopStreaming()` - Stop voice streaming session
-- `isCurrentlyStreaming()` - Check if currently streaming
-- `showSettingsPanel()` - Show the settings panel
-- `hideSettingsPanel()` - Hide the settings panel
+As of September 2025, the cost for running this solution with default settings in the US East (N. Virginia) Region is approximately **$12.50** per month for a single drive-thru location with moderate usage.
 
-#### **Chat Component** (`components.chat`)
-- `addMessage(message, role)` - Add a message to chat history
-- `clearMessages()` - Clear all chat messages
-- `getMessages()` - Get all chat messages
-- `getLastMessage()` - Get the last chat message
+We recommend creating a [Budget](https://console.aws.amazon.com/billing/home#/budgets) through [AWS Cost Explorer](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/) to help manage costs. Prices are subject to change. For full details, refer to the pricing webpage for each AWS service used in this solution.
 
-#### **UI Component** (`components.ui`)
-- `showNotification(message, type, options)` - Show a toast notification (returns notification ID)
-- `removeNotification(id)` - Remove specific notification by ID
-- `clearAllNotifications()` - Clear all notifications
-- `updateTitle(title)` - Update the browser tab title
+### Sample Cost Table
 
-#### **Auth Component** (`components.auth`)
-- `getCredentials()` - Get current AWS credentials
-- `getTokens()` - Get current Cognito tokens (idToken, accessToken, refreshToken)
-- `getJWT()` - Get current JWT token (ID token from Cognito)
-- `getUserInfo()` - Get current user information
-
-### Tool Execution Context
-
-Tools have access to a rich execution environment:
-
-```javascript
-// Available in tool execution context:
-{
-  // HTTP Client
-  axios: AxiosInstance,
-  
-  // Component access
-  components: {
-    app: { /* app methods */ },
-    chat: { /* chat methods */ },
-    ui: { /* ui methods */ },
-    auth: { /* auth methods */ }
-  },
-  
-  // Utility functions
-  utils: {
-    generateId: () => string,
-    formatDate: (date, options) => string,
-    sleep: (ms) => Promise<void>,
-    parseJSON: (str) => string,
-    stringifyJSON: (obj) => string
-  },
-  
-  // Authentication context
-  auth: {
-    getCredentials: () => AWSCredentials,
-    getTokens: () => Promise<{ idToken: string | null; accessToken: string | null; refreshToken: string | null }>,
-    getJWT: () => Promise<string | null>,
-    getUserInfo: () => UserInfo
-  },
-  
-  // React utilities for advanced users
-  React: ReactLibrary
-}
-```
-
-### Example Tool
-
-```javascript
-// Tool: Enhanced API Integration Example
-async function execute({...args}) {
-  const { 
-    input, sessionId, toolName, agentTriggered,
-    axios, components, utils, auth, React 
-  } = args;
-  
-  try {
-    // Get Cognito access token for API Gateway authentication
-    const tokens = await auth.getTokens();
-    if (!tokens.accessToken) {
-      throw new Error("No access token available");
-    }
-    
-    // Show notification that API call is starting
-    const notificationId = components.ui.showNotification(
-      "Fetching data from API...", 
-      "info",
-      { duration: 3000 }
-    );
-    
-    // Make authenticated API call to your API Gateway
-    const response = await axios.get("https://your-api-gateway.amazonaws.com/prod/data", {
-      headers: {
-        "Authorization": `Bearer ${tokens.accessToken}`,
-        "Content-Type": "application/json"
-      }
-    });
-    
-    // Remove loading notification and show success
-    components.ui.removeNotification(notificationId);
-    components.ui.showNotification("API call completed successfully", "success");
-    
-    // Add results to chat for user visibility
-    components.chat.addMessage(
-      `API Response: ${JSON.stringify(response.data, null, 2)}`, 
-      "system"
-    );
-    
-    // Return structured data for AI processing
-    return JSON.stringify({ 
-      success: true,
-      data: response.data,
-      metadata: {
-        recordCount: response.data.length || 1,
-        timestamp: utils.formatDate(new Date()),
-        source: "API Gateway"
-      }
-    });
-    
-  } catch (error) {
-    // Handle errors gracefully with user feedback
-    const errorMessage = `API call failed: ${error.message}`;
-    components.ui.showNotification("API call failed", "error");
-    components.chat.addMessage(errorMessage, "system");
-    
-    return JSON.stringify({ 
-      success: false, 
-      error: errorMessage,
-      timestamp: utils.formatDate(new Date())
-    });
-  }
-}
-```
+| AWS Service      | Dimensions                                                                 | Cost (USD)     |
+|------------------|-----------------------------------------------------------------------------|----------------|
+| Amazon Cognito   | 1,000 active users per month without advanced security features            | $0.00/month    |
+| AWS Amplify      | Single location deployment + moderate traffic                               | $5.00/month    |
+| Amazon Bedrock   | Nova Sonic voice processing for ~500 orders/month                          | $7.50/month    |
 
 ## Prerequisites
 
-### AWS Setup
-1. **AWS Account**: Create an [AWS account](https://aws.amazon.com/premiumsupport/knowledge-center/create-and-activate-aws-account/)
-2. **AWS Cognito User Pool**: Set up a Cognito User Pool in your AWS account
-3. **IAM Permissions**: Ensure your Cognito authenticated role has the following policy:
-   ```json
-   {
-     "Version": "2012-10-17",
-     "Statement": [
-       {
-         "Sid": "BedrockFullAccess",
-         "Effect": "Allow",
-         "Action": ["bedrock:*"],
-         "Resource": "*"
-       }
-     ]
-   }
-   ```
+**Development Tools**
+- Node.js v18.x.x or higher
+- Yarn package manager (corepack enabled)
+- Modern web browser (Chrome, Firefox, Safari, Edge)
 
-### Development Environment
-1. **Node.js**: Install Node.js v18.x.x or higher
-   - Install [nvm](https://github.com/nvm-sh/nvm#installation-and-update)
-   - Run `nvm use 18` or `nvm install 18`
-   - Verify with `node -v` (should show v18.x.x or higher)
-2. **Package Manager**: Install corepack globally
-   ```bash
-   npm i -g corepack
-   ```
+**AWS Account Requirements**
+- Access to the following services:
+   - Amazon Bedrock (with Nova Sonic model access)
+   - Amazon Cognito (for authentication)
+   - AWS Amplify (for hosting and deployment)
 
-## Setup Instructions
+- [AWS Identity and Access Management (IAM)](https://aws.amazon.com/iam/) permissions to:
+   - Use Amazon Bedrock Nova Sonic model
+   - Set up Cognito user/identity pools with appropriate policies
+   - Deploy Amplify applications
 
-### 1. Clone and Install Dependencies
+**Important**: Ensure your AWS account has access to Amazon Bedrock Nova Sonic in your target region before starting deployment.
+
+## Deployment Steps
+
+**Objective**: Set up and deploy the QSR AI Drive-Thru Experience application with proper configuration.
+
+### Clone Repository
+
+1. Clone repository to your local machine:
+
 ```bash
-git clone <repository-url>
-cd BrowserSDKNovaSonicChatBase
+git clone ssh://git.amazon.com/pkg/QSR-AI-Drive-thru-experience
+```
+
+2. Change directory to the folder:
+```bash
+cd QSR-AI-Drive-thru-experience
+```
+
+3. Install dependencies:
+```bash
 yarn install
 ```
 
-### 2. Start the Development Server
+**Success Criteria**: All dependencies are installed without errors.
+
+### Local Testing Before Deploying
+
+1. Start the development server:
+
 ```bash
 yarn dev
 ```
 
-### 3. Configure the Application
-Navigate to [http://localhost:5173](http://localhost:5173) in your browser.
+2. Open your browser and navigate to http://localhost:5173
+3. Configure your AWS Cognito settings in the application
+4. Test the voice interaction and ordering flow
 
-**First-time setup flow:**
-1. **Configuration Screen**: The app will show a configuration interface
-2. **Cognito Settings**: Fill in your AWS Cognito configuration:
-   - **User Pool ID**: Your Cognito User Pool ID (e.g., `us-east-1_xxxxxxxxx`)
-   - **User Pool Client ID**: Your Cognito App Client ID
-   - **Region**: AWS region where your User Pool is located (e.g., `us-east-1`)
-3. **Save Settings**: Click "Save Settings" to store your configuration
-4. **Authentication**: You'll be redirected to the Cognito authentication interface
-5. **Sign Up/Sign In**: Create an account or sign in with existing credentials
-6. **Ready to Use**: Once authenticated, the voice chat interface will be available
+**Success Criteria**: The application runs locally, authentication works, and voice interactions are functional.
 
-### 4. Using the Application
+### Manual Deployment to AWS Amplify
 
-#### Basic Voice Chat
-1. **Grant Microphone Access**: The browser will request microphone permissions after authentication
-2. **Start Streaming**: Click "Start Streaming" to begin the voice conversation
-3. **Speak Naturally**: Talk normally - the AI will respond in real-time
-4. **Visual Feedback**: Watch the chat interface for conversation history and status
-5. **Stop Streaming**: Click "Stop Streaming" to end the session
+**Objective**: Deploy the application to AWS Amplify manually.
 
-#### Creating Custom Tools
-1. **Access Settings**: Click the settings button (⚙️) to open configuration
-2. **Navigate to Agent Behavior**: Click on the "Agent Behavior" tab
-3. **Add New Tool**: Click "Add Tool" to create a new custom tool
-4. **Configure Tool**:
-   - **Tool Name**: Give your tool a descriptive name
-   - **Description**: Describe what the tool does (AI uses this to decide when to call it)
-   - **Input Schema**: Define the JSON schema for tool inputs
-   - **Script**: Write JavaScript code that will be executed when AI calls the tool
-5. **Save Tool**: Click "Save" to store the tool configuration
-6. **Test Tool**: Start a voice conversation and ask the AI to use your tool
+1. Build the application:
 
-#### Viewing Component Documentation
-1. **Access Settings**: Click the settings button (⚙️)
-2. **Component Docs Tab**: Click on "Component Docs" to see live documentation
-3. **Search Components**: Use the search bar to find specific components or methods
-4. **Filter by Category**: Filter components by category (core, ui, auth)
-5. **Copy Examples**: Click copy buttons on code examples to copy snippets
-
-## 📚 Component Documentation System
-
-### Professional Code Examples with Monaco Editor
-
-The Component Documentation system provides a comprehensive reference for all available components and methods, featuring:
-
-#### **🎨 Monaco Editor Integration**
-- **Professional Syntax Highlighting**: Full JavaScript syntax highlighting with vs-dark theme
-- **Copy Functionality**: One-click copy buttons on all code examples
-- **IDE-Like Experience**: Same Monaco Editor used throughout the application
-- **Optimized Performance**: Stable editors that don't reload or flicker
-
-#### **📋 Documentation Features**
-- **Live Component Registry**: Real-time documentation of all registered components
-- **Search and Filter**: Find components and methods quickly
-- **Method Examples**: Each method includes a copyable code example
-- **Parameter Documentation**: Complete parameter descriptions with types and requirements
-
-#### **🚀 Quick Reference Template**
-The documentation includes a comprehensive tool template with:
-- Complete variable extraction and documentation
-- Professional syntax highlighting in Monaco Editor
-- Copy button for immediate use in tool development
-- Best practices and usage patterns
-
-#### **🔥 Practical API Gateway Examples**
-Two production-ready examples demonstrate:
-
-1. **Chat Display Pattern**: API call with results displayed in chat
-   - Cognito authentication with access tokens
-   - Error handling with user notifications
-   - Visual feedback through toast notifications
-
-2. **Agent Response Pattern**: API call with structured data for AI processing
-   - Dynamic parameters from AI agent input
-   - Structured JSON response for AI consumption
-   - Comprehensive metadata and error context
-
-#### **💡 Integration Tips**
-- Authentication best practices with Cognito tokens
-- Error handling patterns for robust tools
-- API Gateway header requirements
-- Input parameter usage from AI agents
-- Output strategies for different use cases
-
-## Tool Development Guide
-
-### Basic Tool Structure
-
-Every tool must have an `execute` function that returns a JSON string:
-
-```javascript
-async function execute({...args}) {
-  console.log("Tool executed with arguments:", args);
-  
-  // Extract all available variables from the execution context
-  const { 
-    input,           // Input from AI model or auto-execution
-    sessionId,       // Current session ID
-    toolName,        // Name of this tool
-    agentTriggered,  // Boolean: true if AI-triggered, false if auto-executed
-    axios,           // HTTP client for API requests
-    components,      // UI components: { app, chat, ui, auth }
-    utils,           // Utility functions: { generateId, formatDate, sleep, parseJSON, stringifyJSON }
-    auth,            // Authentication: { getCredentials, getTokens, getJWT, getUserInfo }
-    React            // React library for advanced users
-  } = args;
-  
-  // Your tool logic here
-  // Now all variables are properly defined and available:
-  
-  // Add a chat message
-  components.chat.addMessage("Hello from tool!", "system");
-  
-  // Show notification (returns notification ID)
-  const notificationId = components.ui.showNotification("Tool executed successfully", "success");
-  
-  // Make HTTP request
-  const response = await axios.get("https://api.example.com/data");
-  
-  // Use utilities
-  const uniqueId = utils.generateId();
-  const formattedDate = utils.formatDate(new Date());
-  
-  // Return result (always return JSON string)
-  return JSON.stringify({ 
-    success: true, 
-    data: response.data,
-    notificationId: notificationId,
-    executedAt: formattedDate,
-    uniqueId: uniqueId
-  });
-}
+```bash
+yarn build
 ```
 
-### Tool Input Schema
+2. Package the dist folder contents:
 
-Define what inputs your tool expects using JSON Schema:
+```bash
+cd dist
+zip -r ../deployment.zip ./*
+```
+
+3. Navigate to the **AWS Amplify Console** in your AWS account
+4. Click on **Host web app** > **Deploy without Git provider**
+5. Upload the deployment.zip file created in step 2
+6. Follow the prompts to complete the deployment
+
+**Success Criteria**: The application is successfully deployed and accessible via the Amplify URL.
+
+### Automated Deployment to AWS Amplify
+
+**Objective**: Deploy the application to AWS Amplify using Git integration.
+
+1. Fork or clone this repository to your preferred Git provider
+
+2. Open your [AWS Management console and go to AWS Amplify](https://console.aws.amazon.com/amplify/apps)
+
+3. Connect to your Git repository following AWS Amplify documentation
+
+4. Configure the build settings with the following build specification:
+```yml
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm i -g corepack
+        - corepack enable
+    build:
+      commands:
+        - yarn install
+        - yarn build
+  artifacts:
+    baseDirectory: dist
+    files:
+      - "**/*"
+  cache:
+    paths:
+      - node_modules/**/*
+      - .yarn/cache/**/*
+```
+
+5. Click **Next** and then **Save and Deploy**
+
+**Success Criteria**: The application is successfully deployed and accessible via the Amplify URL.
+
+## Set up Amazon Cognito Authentication
+
+**Objective**: Configure Amazon Cognito for secure user authentication.
+
+1. Navigate to the **Amazon Cognito console** in your AWS account
+2. Create a new User Pool with the following settings:
+   - Sign-in options: Username
+   - Password policy: Default or custom as needed
+   - MFA: Optional (recommended for production)
+3. Create an App Client for the User Pool
+4. Create an Identity Pool and link it to your User Pool
+5. Configure IAM roles for authenticated users with Bedrock permissions:
 
 ```json
 {
-  "type": "object",
-  "properties": {
-    "message": {
-      "type": "string",
-      "description": "The message to display"
-    },
-    "type": {
-      "type": "string",
-      "enum": ["info", "warning", "error", "success"],
-      "description": "The type of notification"
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "bedrock:InvokeModelWithResponseStream",
+        "bedrock:InvokeModel"
+      ],
+      "Resource": "*"
     }
-  },
-  "required": ["message"]
+  ]
 }
 ```
 
-### Advanced Tool Examples
+**Success Criteria**: Cognito User Pool and Identity Pool are created with proper IAM permissions for Bedrock access.
 
-#### 1. Weather Tool
-```javascript
-async function execute({...args}) {
-  const { input, sessionId, toolName, ...restContext } = args;
-  const { location } = input;
-  
-  try {
-    // Make API call to weather service
-    const response = await axios.get(`https://api.weather.com/v1/current?location=${location}`);
-    
-    // Display result in chat
-    components.chat.addMessage(`Weather in ${location}: ${response.data.temperature}°F`, "assistant");
-    
-    // Show notification
-    components.ui.showNotification(`Weather updated for ${location}`, "success");
-    
-    return JSON.stringify({
-      success: true,
-      weather: response.data,
-      location: location
-    });
-  } catch (error) {
-    components.ui.showNotification("Failed to get weather data", "error");
-    return JSON.stringify({ success: false, error: error.message });
-  }
-}
-```
+## Deployment Validation
 
-#### 2. Task Management Tool
-```javascript
-async function execute({...args}) {
-  const { input, sessionId, toolName, ...restContext } = args;
-  const { action, task } = input;
-  
-  // Get existing tasks from localStorage
-  const tasks = JSON.parse(localStorage.getItem('tasks') || '[]');
-  
-  switch (action) {
-    case 'add':
-      tasks.push({ id: utils.generateId(), task, completed: false });
-      components.chat.addMessage(`Added task: ${task}`, "system");
-      break;
-      
-    case 'list':
-      const taskList = tasks.map(t => `${t.completed ? '✅' : '⏳'} ${t.task}`).join('\n');
-      components.chat.addMessage(`Tasks:\n${taskList}`, "system");
-      break;
-      
-    case 'complete':
-      const taskIndex = tasks.findIndex(t => t.task.includes(task));
-      if (taskIndex >= 0) {
-        tasks[taskIndex].completed = true;
-        components.chat.addMessage(`Completed task: ${task}`, "system");
-      }
-      break;
-  }
-  
-  // Save updated tasks
-  localStorage.setItem('tasks', JSON.stringify(tasks));
-  
-  return JSON.stringify({ success: true, tasks: tasks });
-}
-```
+**Objective**: Verify that all components are working correctly together.
 
-## Browser Compatibility
+1. Navigate to your deployed Amplify application URL
+2. Configure the application with your Cognito settings
+3. Verify that authentication works correctly
+4. Test the voice interaction by clicking "Start Streaming"
+5. Verify that the AI responds to voice input
+6. Test the shopping cart and menu functionality
+7. Confirm that auto-initiate conversation works (if configured)
 
-- **Chrome/Edge/Safari**: Full support with optimal audio processing
-- **Firefox**: Supported with automatic audio resampling adjustments
+**Success Criteria**:
+- Amplify app is successfully deployed and accessible
+- Authentication with Cognito works correctly
+- Voice streaming connects and processes audio
+- AI responds appropriately to voice input
+- Shopping cart and menu tools function correctly
 
-## Technical Details
+## Running the Guidance
 
-### Authentication & Security
-- **AWS Cognito Integration**: Secure user authentication and credential management
-- **Automatic Token Refresh**: Handles credential renewal automatically
-- **Lazy Client Initialization**: Bedrock client created only when needed with fresh credentials
-- **Secure Storage**: Configuration and credentials stored securely
-- **Safe Tool Execution**: Uses Function constructor instead of eval() for security
+**Objective**: Use the deployed application for drive-thru voice ordering.
 
-### Audio Processing
-- **Sample Rate**: 16kHz PCM audio for optimal Bedrock compatibility
-- **Format**: 16-bit signed integer audio data
-- **Streaming**: Real-time audio chunks sent via WebSocket
-- **Playbook**: Web Audio API with AudioWorklet for low-latency playbook
-- **Cross-browser**: Automatic sample rate conversion for Firefox
+### Initial Setup
 
-### Session Management
-- **Automatic Initialization**: Sessions are created and configured automatically
-- **Fresh Sessions**: New session created for each streaming conversation
-- **Tool Registration**: Tools automatically registered with each new session
-- **Cleanup**: Inactive sessions are automatically closed after 5 minutes
-- **Error Recovery**: Robust error handling with automatic reconnection
+1. Launch the application (locally or via Amplify)
+2. Configure your Cognito settings in the Settings panel
+3. Authenticate using your Cognito credentials
+4. Configure company branding and auto-initiate settings as needed
 
-### Tool System Architecture
-- **Component Discovery**: Automatic registration of UI components and methods
-- **Safe Execution**: Sandboxed JavaScript execution with controlled context
-- **AWS Integration**: Tools seamlessly integrate with Bedrock streaming
-- **Live Documentation**: Real-time documentation generation and updates
-- **Performance Optimized**: Memoized contexts and efficient re-rendering
+### Voice Ordering Flow
 
-## Development Scripts
+1. Click "Start Streaming" to begin voice interaction
+2. Speak naturally to place orders
+3. The AI will respond and update the shopping cart automatically
+4. Use voice commands to modify orders, ask questions, or complete checkout
+5. Click "Stop Streaming" when the interaction is complete
 
-- `yarn dev`: Start development server with hot reload
-- `yarn build`: Build for production
-- `yarn preview`: Preview production build
-- `yarn check`: Run code formatting and linting
-- `yarn ci`: Run CI checks
+### Expected Output
 
-## Project Structure
+- Natural voice conversation with immediate AI responses
+- Real-time shopping cart updates based on voice commands
+- Professional drive-thru experience with customizable branding
+- Secure authentication and temporary credential management
 
-```
-src/
-├── main.tsx               # React entry point
-├── App.tsx                # Main React application component with tool integration
-├── style.css              # Application styles
-├── components/            # React components
-│   ├── SettingsComponent.tsx # Configuration interface with tool management
-│   ├── AuthComponent.tsx  # Cognito authentication wrapper
-│   ├── ChatContainer.tsx  # Chat history display
-│   ├── StatusIndicator.tsx # Connection status
-│   ├── Controls.tsx       # Control buttons
-│   ├── ThinkingIndicator.tsx # Animated thinking dots
-│   └── ComponentDocumentation.tsx # Live component documentation
-├── contexts/              # React contexts
-│   └── ToolContext.tsx    # Tool management and component discovery
-├── hooks/                 # Custom React hooks
-│   └── useAutoRegisterComponent.ts # Component auto-registration
-└── lib/
-    ├── sdk/               # AWS Bedrock integration
-    │   ├── client.ts      # Bedrock streaming client
-    │   ├── events_proxy.ts # Event handling with tool registration
-    │   ├── types.ts       # Type definitions
-    │   └── consts.ts      # Configuration constants
-    ├── tools/             # Tool system
-    │   └── ToolExecutor.ts # Safe JavaScript execution engine
-    ├── play/              # Audio playbook system
-    │   └── AudioPlayer.js # Audio worklet management
-    └── util/              # Utility classes
-        ├── SettingsManager.ts # Configuration management
-        └── ChatHistoryManager.js # Chat state management
-```
+### Debugging and Logging
 
-## React Architecture
+- Voice processing status is displayed in the interface
+- Detailed logs are available in the browser console
+- Chat history shows the conversation flow
+- Tool execution results are logged for debugging
 
-The application uses modern React patterns with tool system integration:
+## Security Considerations
 
-- **Functional Components**: All components are functional with hooks
-- **State Management**: Uses `useState` and `useRef` for local state
-- **Effect Management**: Uses `useEffect` for side effects and cleanup
-- **Context System**: Custom contexts for tool management and component discovery
-- **Event Handling**: Custom event system integrated with React lifecycle
-- **Authentication Integration**: AWS Amplify UI components for seamless auth
-- **Tool Integration**: Automatic component registration and method discovery
-- **TypeScript**: Full TypeScript support with proper typing
+This solution implements several security best practices:
 
-## Troubleshooting
+1. **Authentication**: Uses Amazon Cognito for secure user authentication
+2. **Temporary Credentials**: Leverages AWS STS for short-lived credentials
+3. **No Stored Secrets**: No long-term credentials stored in the frontend
+4. **Secure Tool Execution**: JavaScript tools run in controlled execution context
+5. **HTTPS**: All communication encrypted in transit
 
-### Common Issues
-1. **Configuration Problems**: Use the settings interface to verify Cognito configuration
-2. **Authentication Issues**: Check Cognito User Pool settings and ensure app client is properly configured
-3. **Microphone Access Denied**: Ensure browser permissions allow microphone access
-4. **Network Issues**: Check internet connection and AWS service availability
-5. **Audio Issues**: Try refreshing the page or restarting the browser
-6. **Tool Execution Errors**: Check browser console for JavaScript errors in tool code
-7. **Component Registration Issues**: Verify components are properly registered in Component Docs tab
-8. **Monaco Editor Issues**: If code examples don't load, check browser console for Monaco CDN errors
-9. **Notification Issues**: If toast notifications don't appear, verify UI component is properly registered
-10. **Copy Button Issues**: Ensure browser supports Clipboard API for copy functionality
+**Additional Security Recommendations**:
+- Enable Multi-Factor Authentication (MFA) in Cognito User Pool
+- Implement principle of least privilege for IAM roles
+- Consider AWS WAF for additional web application protection
+- Regular security audits of custom tools and configurations
 
-### Debug Information
-The application logs detailed information to the browser console. Open Developer Tools (F12) to view logs for troubleshooting.
+## Performance Optimization
 
-### Settings Management
-- **Edit Settings**: Click the settings button (⚙️) to modify configuration
-- **Reset Configuration**: Clear browser localStorage to reset all settings
-- **Incomplete Settings**: The app will highlight missing configuration sections
-- **Tool Management**: Create, edit, and delete tools in the Agent Behavior tab
+To optimize performance:
 
-### Tool Development Debugging
-- **Console Logging**: Use `console.log()` in tool code for debugging
-- **Error Handling**: Wrap tool code in try-catch blocks
-- **Component Access**: Use Component Docs tab to see available methods
-- **Input Validation**: Verify tool input schema matches expected format
+1. **Audio Processing**: Optimized for 16kHz PCM audio with efficient streaming
+2. **Tool Execution**: Memoized contexts and efficient re-rendering
+3. **Caching**: Client-side caching for menu data and configurations
+4. **Monitoring**: CloudWatch integration for performance tracking
 
-## Security Notes
+## Next Steps
 
-- **Secure Authentication**: Uses AWS Cognito for secure user authentication
-- **Credential Management**: Temporary credentials managed automatically
-- **HTTPS Required**: Use HTTPS in production for microphone access and security
-- **No Hardcoded Credentials**: All credentials managed through Cognito authentication
-- **Safe Tool Execution**: Uses Function constructor instead of eval() for security
-- **Sandboxed Environment**: Tools execute in controlled context with limited access
-- **Principle of Least Privilege**: Ensure IAM roles have minimal required permissions
+Potential enhancements for production deployment:
 
-## Production Deployment
+1. **Backend Integration**: Implement the Sample Restaurant Backend for order processing
+2. **Payment Processing**: Integrate with payment gateways for transaction handling
+3. **Kitchen Display**: Connect to kitchen management systems
+4. **Analytics**: Implement detailed analytics and reporting
+5. **Multi-Location**: Scale to support multiple restaurant locations
+6. **Advanced AI**: Enhance with additional Nova models for specialized tasks
 
-For production deployment:
+## Cleanup
 
-1. **Configure Cognito**: Set up production Cognito User Pool
-2. **Update Settings**: Configure production Cognito settings in the app
-3. **HTTPS**: Ensure application is served over HTTPS
-4. **Domain Configuration**: Update Cognito app client with production domain
-5. **IAM Permissions**: Review and minimize IAM permissions for production
-6. **Tool Security**: Review and validate all custom tools before deployment
-7. **Content Security Policy**: Configure CSP headers for additional security
+**Objective**: Remove all resources to avoid ongoing charges.
 
-## Contributing
+1. **Delete Amplify App**
+   - From AWS Amplify Console, delete the application
 
-This project demonstrates AWS Bedrock's bidirectional streaming capabilities with production-ready authentication and an advanced tool system. Follow standard development practices and ensure all changes are properly tested.
+2. **Delete Cognito Resources**
+   - Remove Identity Pool
+   - Remove User Pool and associated app clients
 
-### Development Guidelines
-- **Code Quality**: Maintain TypeScript strict mode and proper typing
-- **Component Registration**: Use `useAutoRegisterComponent` for new components
-- **Tool Development**: Follow tool development patterns and security practices
-- **Testing**: Test both voice functionality and tool system integration
-- **Documentation**: Update component documentation and examples
+3. **Clean up IAM Resources**
+   - Delete custom IAM roles and policies created for the solution
 
-## License
+4. **Optional**: Remove any custom CloudWatch logs or metrics
 
-This project is for AWS SDK development and testing purposes.
+**Success Criteria**: All AWS resources are removed and no longer incurring charges.
 
----
+## FAQ, Known Issues, Additional Considerations, and Limitations
 
-## 🎉 Success Metrics
+### Known Issues
 
-This implementation has achieved:
-- ⭐️⭐️⭐️⭐️⭐️ **5-Star User Rating**
-- ✅ **100% Working Voice Chat Functionality**
-- ✅ **Complete Tool System Integration**
-- ✅ **Professional Audio Processing**
-- ✅ **Enterprise-Grade Authentication**
-- ✅ **Monaco Editor Documentation System**
-- ✅ **Professional Toast Notification System**
-- ✅ **Live Component Documentation with Copy Functionality**
-- ✅ **Cross-Browser Compatibility**
-- ✅ **Production-Ready API Gateway Examples**
+- Some browsers may require explicit microphone permissions
+- Firefox may require audio resampling adjustments
+- Tool execution is limited to client-side JavaScript for security
 
-**Ready for production use and further enhancement!**
+### Troubleshooting
+
+1. **Voice Not Working**:
+   - Check microphone permissions in browser
+   - Verify Bedrock Nova Sonic access in your region
+   - Check browser console for WebSocket connection errors
+
+2. **Authentication Issues**:
+   - Verify Cognito configuration is correct
+   - Check IAM role permissions for Bedrock access
+   - Confirm Identity Pool is properly linked to User Pool
+
+3. **Tool Execution Errors**:
+   - Check browser console for JavaScript errors
+   - Verify tool syntax and execution context
+   - Review tool input schemas and validation
+
+### Additional Considerations
+
+- Amazon Bedrock charges per token for voice processing
+- Consider implementing rate limiting for production
+- Tool system allows extensive customization but requires JavaScript knowledge
+- Auto-initiate feature requires pre-recorded audio setup
+
+### Limitations
+
+- Client-side tool execution only (no server-side processing)
+- Limited to supported browsers with modern audio APIs
+- Requires stable internet connection for real-time voice processing
+
+For issues or feature requests, please contact the development team.
+
+## Revisions
+
+- **v1.0.0** – Initial release with complete drive-thru experience, voice ordering, and tool system
+
+## Notices
+
+This solution is provided for demonstration and educational purposes. Customers are responsible for making their own independent assessment of the information and code provided.
+
+This solution:
+(a) is for informational purposes only,
+(b) represents current AWS product offerings and practices, which are subject to change without notice, and
+(c) does not create any commitments or assurances from AWS and its affiliates, suppliers, or licensors.
+
+AWS products or services are provided "as is" without warranties, representations, or conditions of any kind, whether express or implied.
+
+## Authors
+
+- Sergio Castro - Lead Developer
+- Amazon Nova Foundation Models Team
+- AWS Solutions Architecture Team
