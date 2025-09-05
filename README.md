@@ -393,6 +393,7 @@ AWS products or services are provided "as is" without warranties, representation
 
 ## Authors
 
-- Sergio Castro - Lead Developer
-- Amazon Nova Foundation Models Team
-- AWS Solutions Architecture Team
+- Sergio Barraza
+- Salman Ahmed
+- Ravi Kumar
+- Ankush Goyal
