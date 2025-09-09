@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Editor from '@monaco-editor/react';
 import { Tool } from '../lib/util/SettingsManager';
 
@@ -148,10 +148,20 @@ export const ToolEditor: React.FC<ToolEditorProps> = ({
               </div>
               <div className="code-editor-container">
                 <Editor
-                  height="150px"
+                  height="100%"
                   defaultLanguage="json"
                   value={localTool.inputSchema.json}
                   onChange={handleSchemaChange}
+                  onMount={(editor) => {
+                    setTimeout(() => editor.layout(), 100); // Fix initial layout with delay
+                    const container = editor.getDomNode()?.parentElement;
+                    if (container) {
+                      const resizeObserver = new ResizeObserver(() => {
+                        editor.layout();
+                      });
+                      resizeObserver.observe(container);
+                    }
+                  }}
                   theme="vs-dark"
                   options={{
                     minimap: { enabled: false },
@@ -186,10 +196,20 @@ export const ToolEditor: React.FC<ToolEditorProps> = ({
               </div>
               <div className={`code-editor-container ${isCodeExpanded ? 'expanded' : ''}`}>
                 <Editor
-                  height={isCodeExpanded ? "500px" : "200px"}
+                  height="100%"
                   defaultLanguage="javascript"
                   value={localTool.script}
                   onChange={(value) => handleFieldChange('script', value || '')}
+                  onMount={(editor) => {
+                    setTimeout(() => editor.layout(), 100); // Fix initial layout with delay
+                    const container = editor.getDomNode()?.parentElement;
+                    if (container) {
+                      const resizeObserver = new ResizeObserver(() => {
+                        editor.layout();
+                      });
+                      resizeObserver.observe(container);
+                    }
+                  }}
                   theme="vs-dark"
                   options={{
                     minimap: { enabled: false },

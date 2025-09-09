@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Amplify } from 'aws-amplify';
 import Editor from '@monaco-editor/react';
 import {
@@ -827,10 +827,20 @@ export const SettingsComponent: React.FC<SettingsComponentProps> = ({
                 </p>
                 <div className="code-editor-container">
                   <Editor
-                    height="150px"
+                    height="100%"
                     defaultLanguage="plaintext"
                     value={settings.agent.system_prompt}
                     onChange={handleSystemPromptChange}
+                    onMount={(editor) => {
+                      requestAnimationFrame(() => editor.layout()); // Fix initial layout timing
+                      const container = editor.getDomNode()?.parentElement;
+                      if (container) {
+                        const resizeObserver = new ResizeObserver(() => {
+                          editor.layout();
+                        });
+                        resizeObserver.observe(container);
+                      }
+                    }}
                     theme="vs-dark"
                     options={{
                       minimap: { enabled: false },

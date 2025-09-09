@@ -2159,9 +2159,10 @@ button:focus-visible {
 }
 
 .settings-header {
-  padding: 2rem;
+  background: var(--bg-secondary);
+  padding: 20px;
   text-align: center;
-  background: rgba(255, 255, 255, 0.05);
+  /* background: rgba(255, 255, 255, 0.05); */
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   flex-shrink: 0;
 }
@@ -2589,9 +2590,18 @@ button:focus-visible {
 .code-editor-container {
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 8px;
-  overflow: hidden;
+  overflow: auto;
   background: #1e1e1e;
   transition: all 0.3s ease;
+  resize: both;
+  min-width: 300px;
+  min-height: 120px;
+  height: 200px; /* Set explicit default height */
+}
+
+.code-editor-container::-webkit-resizer {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
 }
 
 .code-editor-container.expanded {
@@ -3963,7 +3973,7 @@ button:focus-visible {
   box-sizing: border-box;
 }
 
-.settings-overlay .settings-container {
+/* .settings-overlay .settings-container {
   background: var(--bg-primary);
   border-radius: 12px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
@@ -3971,26 +3981,26 @@ button:focus-visible {
   width: 100%;
   overflow: hidden;
   position: relative;
-}
+} */
 
-.settings-overlay .settings-container .settings-header {
+/* .settings-overlay .settings-container .settings-header {
   background: var(--bg-secondary);
   padding: 20px;
   border-bottom: 1px solid var(--border-color);
   display: flex;
   justify-content: space-between;
   align-items: center;
-}
+} */
 
-.settings-overlay .settings-container .settings-header h2 {
+/* .settings-overlay .settings-container .settings-header h2 {
   margin: 0;
   color: var(--text-primary);
   font-size: 1.5rem;
-}
+} */
 
-.settings-overlay .settings-container .settings-content {
+/* .settings-overlay .settings-container .settings-content {
   overflow-y: auto;
-}
+} */
 
 /* Ensure settings component content fits properly in overlay */
 .settings-overlay .settings-component {
