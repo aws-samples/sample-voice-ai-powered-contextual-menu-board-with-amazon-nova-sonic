@@ -122,6 +122,29 @@ async function execute({...args}) {
   // Add a chat message
   components.chat.addMessage("Hello from tool!", "system");
   
+  // UI Control Examples:
+  
+  // Example 1: Stop UI with custom actions
+  components.app.stopUI(true, "Move to the next window for payment...", 10, () => {
+    components.app.stopStreaming();
+    components.chat.clearMessages();
+    components.cart.clearCart();
+  });
+  
+  // Example 2: Full app reload without auto-start
+  components.app.startUI("Preparing system...", false);
+  
+  // Example 3: Full app reload with auto-start streaming
+  components.app.startUI("Connecting to voice system...", true);
+  
+  // Example 4: Chained stop-then-restart
+  components.app.stopUI(true, "Processing order...", 8, () => {
+    components.app.stopStreaming();
+    components.cart.clearCart();
+    
+    components.app.startUI("Starting fresh session...", true);
+  });
+  
   // Show notification (returns notification ID)
   const notificationId = components.ui.showNotification("Tool executed successfully", "success");
   

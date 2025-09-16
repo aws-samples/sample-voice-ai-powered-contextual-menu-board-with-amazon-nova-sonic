@@ -72,6 +72,7 @@ const AppContent: React.FC = () => {
   const [waitingForUserTranscription, setWaitingForUserTranscription] = useState(false);
   const [waitingForAssistantResponse, setWaitingForAssistantResponse] = useState(false);
   const [appTitle, setAppTitle] = useState('Your Drive-thru company');
+  const [restartOverlay, setRestartOverlay] = useState({ visible: false, message: '', countdown: 0 });
 
   // Notification state management
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -94,6 +95,7 @@ const AppContent: React.FC = () => {
   const samplingRatioRef = useRef(1);
   const TARGET_SAMPLE_RATE = 16000;
   const isFirefox = navigator.userAgent.toLowerCase().includes("firefox");
+  const autoStartProcessedRef = useRef(false); // Track if autoStart was already processed
 
   // Refs for accessing child component methods
   const menuDisplayRef = useRef<any>(null);
@@ -146,6 +148,76 @@ const AppContent: React.FC = () => {
     }
   }, [getExecutionContext, getComponentRegistry, isAuthenticated]);
 
+  // stopUI function - Display overlay with countdown, then execute callback
+  const stopUI = useCallback((displayMessage = true, messageText = "Processing...", countDownTimer = 10, callback?: () => void) => {
+    console.log("🛑 App: stopUI called with:", { displayMessage, messageText, countDownTimer });
+    
+    if (displayMessage) {
+      setRestartOverlay({
+        visible: true,
+        message: messageText,
+        countdown: countDownTimer
+      });
+      
+      const timer = setInterval(() => {
+        setRestartOverlay(prev => {
+          if (prev.countdown <= 1) {
+            clearInterval(timer);
+            // Execute callback after timer ends
+            if (callback) {
+              try {
+                callback();
+              } catch (error) {
+                console.error("stopUI callback error:", error);
+              }
+            }
+            // Hide overlay
+            setRestartOverlay({ visible: false, message: '', countdown: 0 });
+            return prev;
+          }
+          return { ...prev, countdown: prev.countdown - 1 };
+        });
+      }, 1000);
+    } else {
+      // Still wait for timer even without overlay
+      setTimeout(() => {
+        if (callback) {
+          try {
+            callback();
+          } catch (error) {
+            console.error("stopUI callback error:", error);
+          }
+        }
+      }, countDownTimer * 1000);
+    }
+  }, []);
+
+  // startUI function - Full app reload with optional auto-start streaming
+  const startUI = useCallback((message: string, autoStartStreaming: boolean = false) => {
+    console.log("🚀 App: startUI - Full app reload requested with:", { message, autoStartStreaming });
+    
+    // Show loading message briefly
+    setRestartOverlay({
+      visible: true,
+      message: message,
+      countdown: 0
+    });
+    
+    // Always force reload by adding timestamp to ensure URL changes
+    const currentUrl = new URL(window.location.href);
+    if (autoStartStreaming) {
+      currentUrl.hash = `#autoStart&t=${Date.now()}`;
+    } else {
+      currentUrl.hash = `#t=${Date.now()}`;
+    }
+    
+    // Reload with guaranteed URL change
+    setTimeout(() => {
+      window.location.href = currentUrl.toString();
+      window.location.reload();
+    }, 1000);
+  }, []);
+
   // Auto-register App component methods for tools
   useAutoRegisterComponent({
     name: 'app',
@@ -186,6 +258,26 @@ const AppContent: React.FC = () => {
         () => setIsEditingConfig(false),
         'Hide the settings panel',
         []
+      ),
+      stopUI: createMethodDescriptor(
+        (displayMessage = true, messageText = "Processing...", countDownTimer = 10, callback?: () => void) => 
+          stopUI(displayMessage, messageText, countDownTimer, callback),
+        'Display overlay with countdown, then execute callback for stopping operations',
+        [
+          { name: 'displayMessage', type: 'boolean', description: 'Whether to show the overlay (default: true)', required: false },
+          { name: 'messageText', type: 'string', description: 'Message to display during countdown (default: "Processing...")', required: false },
+          { name: 'countDownTimer', type: 'number', description: 'Countdown seconds (default: 10)', required: false },
+          { name: 'callback', type: 'function', description: 'Function to execute after countdown', required: false }
+        ]
+      ),
+      startUI: createMethodDescriptor(
+        (message: string, autoStartStreaming: boolean = false) => 
+          startUI(message, autoStartStreaming),
+        'Reinitialize application with full reload and optionally start streaming',
+        [
+          { name: 'message', type: 'string', description: 'Message to display during initialization', required: true },
+          { name: 'autoStartStreaming', type: 'boolean', description: 'Whether to start streaming after reload (default: false)', required: false }
+        ]
       ),
     }
   });
@@ -1459,6 +1551,26 @@ const AppContent: React.FC = () => {
     }
   }, [initAudio, isConfigured, isEditingConfig, isAuthenticated]);
 
+  // Auto-start streaming if #autoStart is in URL (only once per page load)
+  useEffect(() => {
+    if (isConfigured && !isEditingConfig && isAuthenticated && !isStreaming && !autoStartProcessedRef.current) {
+      const hash = window.location.hash;
+      if (hash.includes('autoStart')) {
+        console.log("🚀 Auto-starting streaming due to #autoStart in URL");
+        
+        // Mark as processed to prevent re-triggering
+        autoStartProcessedRef.current = true;
+        
+        // Clean the URL hash after detecting autoStart
+        window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        
+        setTimeout(() => {
+          startStreaming();
+        }, 1000);
+      }
+    }
+  }, [isConfigured, isEditingConfig, isAuthenticated, isStreaming, startStreaming]);
+
   // Show Quick Start dialog for first-time users (before any other UI)
   if (showQuickStart) {
     return (
@@ -1570,6 +1682,22 @@ const AppContent: React.FC = () => {
             </div>
           </div>
         </div>
+        
+        {/* Restart Overlay */}
+        {restartOverlay.visible && (
+          <div className="restart-overlay">
+            <div className="restart-message">
+              <div className="restart-content">
+                <h3>{restartOverlay.message}</h3>
+                <div className="countdown-circle">
+                  <span className="countdown-number">
+                    {restartOverlay.countdown > 0 ? restartOverlay.countdown : ''}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </AuthComponent>
     </div>
   );

@@ -109,7 +109,7 @@ try {
     });
 
     session.onEvent("audioOutput", (data: any) => {
-      console.log("Audio output received, sending to client");
+      // console.log("Audio output received, sending to client");
       target.dispatchEvent(new CustomEvent("audioOutput", { detail: data }));
     });
 

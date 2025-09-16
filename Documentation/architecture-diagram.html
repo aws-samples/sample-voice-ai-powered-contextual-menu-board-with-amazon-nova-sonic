@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QSR AI Drive-Thru Experience - Architecture Diagram</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            margin: 20px;
+            line-height: 1.2;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #569cd6;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .diagram {
+            background-color: #252526;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            white-space: pre;
+            font-size: 12px;
+            border: 1px solid #3c3c3c;
+        }
+        .highlight-frontend { color: #4ec9b0; }
+        .highlight-tools { color: #dcdcaa; }
+        .highlight-aws { color: #569cd6; }
+        .highlight-flow { color: #ce9178; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>QSR AI Drive-Thru Experience - Architecture Diagram</h1>
+        
+        <div class="diagram">┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                                    QSR AI Drive-Thru Experience                      │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                                      <span class="highlight-frontend">Frontend (React)</span>                                │
+├─────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                     │
+│  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐                │
+│  │   <span class="highlight-frontend">Settings</span>      │    │      <span class="highlight-frontend">Chat</span>       │    │   <span class="highlight-frontend">Audio I/O</span>     │                │
+│  │   <span class="highlight-frontend">Component</span>     │    │   <span class="highlight-frontend">Container</span>     │    │   <span class="highlight-frontend">Processing</span>    │                │
+│  │                 │    │                 │    │                 │                │
+│  │ • Cognito Config│    │ • Chat History  │    │ • Microphone    │                │
+│  │ • Agent Config  │    │ • Message Flow  │    │ • Audio Context │                │
+│  │ • Tool Editor   │    │ • Status Display│    │ • PCM → Base64  │                │
+│  │ • Global Params │    │ • Transcription │    │ • Audio Player  │                │
+│  └─────────────────┘    └─────────────────┘    └─────────────────┘                │
+│           │                       │                       │                        │
+│           │                       │                       │                        │
+│  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐                │
+│  │   <span class="highlight-frontend">Shopping</span>      │    │      <span class="highlight-frontend">Menu</span>       │    │   <span class="highlight-frontend">Tool Context</span>  │                │
+│  │     <span class="highlight-frontend">Cart</span>        │    │    <span class="highlight-frontend">Display</span>      │    │    <span class="highlight-frontend">Provider</span>     │                │
+│  │                 │    │                 │    │                 │                │
+│  │ • Cart Items    │    │ • Menu Items    │    │ • Component Reg │                │
+│  │ • Customizations│    │ • Categories    │    │ • Method Access │                │
+│  │ • Order Summary │    │ • Pricing       │    │ • Execution Ctx │                │
+│  │ • Bulk Add/Edit │    │ • Availability  │    │ • Utils & Auth  │                │
+│  └─────────────────┘    └─────────────────┘    └─────────────────┘                │
+│           │                       │                       │                        │
+└───────────┼───────────────────────┼───────────────────────┼────────────────────────┘
+            │                       │                       │
+            │                       │                       │
+┌───────────┼───────────────────────┼───────────────────────┼────────────────────────┐
+│           │                       │                       │                        │
+│  ┌─────────────────────────────────────────────────────────────────────────────────┐ │
+│  │                            <span class="highlight-tools">Tool Execution Engine</span>                                │ │
+│  │                                                                                 │ │
+│  │  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐            │ │
+│  │  │   <span class="highlight-tools">Tool Config</span>   │    │  <span class="highlight-tools">Tool Executor</span>  │    │  <span class="highlight-tools">Execution Ctx</span>  │            │ │
+│  │  │                 │    │                 │    │                 │            │ │
+│  │  │ • Tool Name     │───▶│ • Script Eval   │───▶│ • Components    │            │ │
+│  │  │ • Description   │    │ • Context Inject│    │ • Utils         │            │ │
+│  │  │ • Input Schema  │    │ • Error Handling│    │ • Auth          │            │ │
+│  │  │ • JavaScript    │    │ • Result Return │    │ • HTTP Client   │            │ │
+│  │  │ • Run Order     │    │                 │    │                 │            │ │
+│  │  └─────────────────┘    └─────────────────┘    └─────────────────┘            │ │
+│  └─────────────────────────────────────────────────────────────────────────────────┘ │
+│                                       │                                             │
+└───────────────────────────────────────┼─────────────────────────────────────────────┘
+                                        │
+┌───────────────────────────────────────┼─────────────────────────────────────────────┐
+│                                       │                                             │
+│  ┌─────────────────────────────────────────────────────────────────────────────────┐ │
+│  │                    <span class="highlight-aws">AWS SDK + Nova Sonic WebSocket Connection</span>                   │ │
+│  │                                                                                 │ │
+│  │  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐            │ │
+│  │  │  <span class="highlight-aws">Audio Stream</span>   │    │   <span class="highlight-aws">WebSocket</span>     │    │  <span class="highlight-aws">Response Stream</span>│            │ │
+│  │  │                 │    │   <span class="highlight-aws">Connection</span>    │    │                 │            │ │
+│  │  │ • Base64 Audio  │───▶│ • Bidirectional │───▶│ • Transcription │            │ │
+│  │  │ • 16kHz PCM     │    │ • AWS SDK       │    │ • Tool Calls    │            │ │
+│  │  │ • Real-time     │    │ • Nova Sonic    │    │ • Audio Chunks  │            │ │
+│  │  └─────────────────┘    └─────────────────┘    └─────────────────┘            │ │
+│  │                                 │                                              │ │
+│  └─────────────────────────────────┼──────────────────────────────────────────────┘ │
+│                                    │                                                │
+└────────────────────────────────────┼────────────────────────────────────────────────┘
+                                     │
+┌────────────────────────────────────┼────────────────────────────────────────────────┐
+│                                    │                                                │
+│  ┌─────────────────────────────────────────────────────────────────────────────────┐ │
+│  │                        <span class="highlight-flow">Nova Sonic WebSocket Data Flow</span>                          │ │
+│  │                                                                                 │ │
+│  │  <span class="highlight-flow">Frontend Audio ──▶ Base64 Encode ──▶ WebSocket Send</span>                          │ │
+│  │       │                                    │                                   │ │
+│  │       │                                    ▼                                   │ │
+│  │       │                            ┌─────────────┐                            │ │
+│  │       │                            │ <span class="highlight-aws">Nova Sonic</span>  │                            │ │
+│  │       │                            │ <span class="highlight-aws">Processing</span>  │                            │ │
+│  │       │                            │ • Voice→Text│                            │ │
+│  │       │                            │ • AI Logic  │                            │ │
+│  │       │                            │ • Tool Calls│                            │ │
+│  │       │                            │ • Text→Voice│                            │ │
+│  │       │                            └─────────────┘                            │ │
+│  │       │                                    │                                   │ │
+│  │       │                                    ▼                                   │ │
+│  │       │                            <span class="highlight-flow">WebSocket Receive</span>                          │ │
+│  │       │                                    │                                   │ │
+│  │       └────────────────────────────────────┼───────────────────────────────────│ │
+│  │                                            │                                   │ │
+│  │  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐            │ │
+│  │  │  <span class="highlight-flow">Transcription</span>  │    │   <span class="highlight-tools">Tool Calls</span>    │    │  <span class="highlight-flow">Audio Response</span> │            │ │
+│  │  │   <span class="highlight-flow">Display</span>       │◀───│   <span class="highlight-tools">Execution</span>     │◀───│    <span class="highlight-flow">Playback</span>     │            │ │
+│  │  └─────────────────┘    └─────────────────┘    └─────────────────┘            │ │
+│  └─────────────────────────────────────────────────────────────────────────────────┘ │
+│                                                                                     │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+
+<span class="highlight-flow">WebSocket Message Flow:</span>
+1. User speaks ──▶ PCM Audio ──▶ Base64 Encode ──▶ WebSocket Send
+2. Nova Sonic receives ──▶ Voice-to-Text ──▶ AI Processing ──▶ Tool Calls
+3. Tool results ──▶ AI Response ──▶ Text-to-Voice ──▶ WebSocket Send
+4. Frontend receives ──▶ Transcription + Tool Calls + Audio Chunks
+5. Tool Executor ──▶ JavaScript execution ──▶ Component updates
+6. Audio chunks ──▶ Audio Player ──▶ User hears response
+
+<span class="highlight-aws">Key WebSocket Events:</span>
+• Audio Input: Base64 encoded PCM audio chunks
+• Transcription: Real-time user speech text
+• Tool Calls: AI-generated function calls with parameters
+• Audio Output: Base64 encoded response audio chunks
+• Status: Connection and processing state updates</div>
+    </div>
+</body>
+</html>
