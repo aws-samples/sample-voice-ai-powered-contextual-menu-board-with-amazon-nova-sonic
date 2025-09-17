@@ -340,6 +340,20 @@ export class SettingsManager {
    */
   static saveCredentials(credentials: any): void {
     try {
+      // Validate credentials structure
+      if (!credentials || typeof credentials !== 'object') {
+        console.error('Invalid credentials: must be an object');
+        return;
+      }
+
+      const requiredFields = ['accessKeyId', 'secretAccessKey', 'sessionToken'];
+      for (const field of requiredFields) {
+        if (!credentials[field] || typeof credentials[field] !== 'string') {
+          console.error(`Invalid credentials: missing or invalid ${field}`);
+          return;
+        }
+      }
+
       sessionStorage.setItem(this.CREDENTIALS_KEY, JSON.stringify({
         accessKeyId: credentials.accessKeyId,
         secretAccessKey: credentials.secretAccessKey,
