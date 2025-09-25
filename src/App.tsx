@@ -874,33 +874,6 @@ const AppContent: React.FC = () => {
     setIsEditingConfig(true);
   };
 
-  // Quick Start dialog handlers
-  const handleQuickStartLoadDefaults = async () => {
-    try {
-      console.log('🚀 Quick Start: Loading default configuration');
-      const result = await SettingsManager.initializeWithDefaults();
-
-      if (result.loaded) {
-        setShowQuickStart(false);
-        setIsEditingConfig(true); // Open settings for Cognito configuration
-        showNotification(
-          "Sample configuration loaded! Please configure your AWS Cognito settings to continue.",
-          "success",
-          { duration: 8000 }
-        );
-      } else {
-        setShowQuickStart(false);
-        setIsEditingConfig(true);
-      }
-    } catch (error) {
-      console.error('Error loading defaults from Quick Start:', error);
-      showNotification(
-        "Error loading sample configuration. Please try manual setup.",
-        "error"
-      );
-    }
-  };
-
   const handleQuickStartSkip = () => {
     setShowQuickStart(false);
     setIsEditingConfig(true); // Open settings for manual configuration
@@ -1615,7 +1588,6 @@ const AppContent: React.FC = () => {
   if (showQuickStart) {
     return (
       <QuickStartDialog
-        onLoadDefaults={handleQuickStartLoadDefaults}
         onLoadSample={handleQuickStartLoadSample}
         onSkip={handleQuickStartSkip}
       />

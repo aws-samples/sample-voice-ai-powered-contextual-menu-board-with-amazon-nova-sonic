@@ -23,13 +23,11 @@ interface SamplesIndex {
 }
 
 interface QuickStartDialogProps {
-  onLoadDefaults: () => void;
   onLoadSample: (sampleId: string) => void;
   onSkip: () => void;
 }
 
 const QuickStartDialog: React.FC<QuickStartDialogProps> = ({
-  onLoadDefaults,
   onLoadSample,
   onSkip
 }) => {
