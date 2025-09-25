@@ -115,7 +115,7 @@ const AppContent: React.FC = () => {
 
     // Update menu items periodically
     const interval = setInterval(updateMenuItems, 2000);
-    
+
     // Initial update
     setTimeout(updateMenuItems, 1000);
 
@@ -133,13 +133,13 @@ const AppContent: React.FC = () => {
     if (isAuthenticated) {
       const registry = getComponentRegistry();
       const componentNames = registry.map(comp => comp.name);
-      
+
       // Check if we have the essential components
       const hasMenu = componentNames.includes('menu');
       const hasCart = componentNames.includes('cart');
-      
+
       console.log("🔧 App: Component registry check - Components:", componentNames, "HasMenu:", hasMenu, "HasCart:", hasCart);
-      
+
       if (hasMenu && hasCart) {
         const context = getExecutionContext();
         console.log("🔧 App: All essential components available, updating tool context with:", Object.keys(context.components));
@@ -151,14 +151,14 @@ const AppContent: React.FC = () => {
   // stopUI function - Display overlay with countdown, then execute callback
   const stopUI = useCallback((displayMessage = true, messageText = "Processing...", countDownTimer = 10, callback?: () => void) => {
     console.log("🛑 App: stopUI called with:", { displayMessage, messageText, countDownTimer });
-    
+
     if (displayMessage) {
       setRestartOverlay({
         visible: true,
         message: messageText,
         countdown: countDownTimer
       });
-      
+
       const timer = setInterval(() => {
         setRestartOverlay(prev => {
           if (prev.countdown <= 1) {
@@ -195,14 +195,14 @@ const AppContent: React.FC = () => {
   // startUI function - Full app reload with optional auto-start streaming
   const startUI = useCallback((message: string, autoStartStreaming: boolean = false) => {
     console.log("🚀 App: startUI - Full app reload requested with:", { message, autoStartStreaming });
-    
+
     // Show loading message briefly
     setRestartOverlay({
       visible: true,
       message: message,
       countdown: 0
     });
-    
+
     // Always force reload by adding timestamp to ensure URL changes
     const currentUrl = new URL(window.location.href);
     if (autoStartStreaming) {
@@ -210,7 +210,7 @@ const AppContent: React.FC = () => {
     } else {
       currentUrl.hash = `#t=${Date.now()}`;
     }
-    
+
     // Reload with guaranteed URL change
     setTimeout(() => {
       window.location.href = currentUrl.toString();
@@ -260,7 +260,7 @@ const AppContent: React.FC = () => {
         []
       ),
       stopUI: createMethodDescriptor(
-        (displayMessage = true, messageText = "Processing...", countDownTimer = 10, callback?: () => void) => 
+        (displayMessage = true, messageText = "Processing...", countDownTimer = 10, callback?: () => void) =>
           stopUI(displayMessage, messageText, countDownTimer, callback),
         'Display overlay with countdown, then execute callback for stopping operations',
         [
@@ -271,7 +271,7 @@ const AppContent: React.FC = () => {
         ]
       ),
       startUI: createMethodDescriptor(
-        (message: string, autoStartStreaming: boolean = false) => 
+        (message: string, autoStartStreaming: boolean = false) =>
           startUI(message, autoStartStreaming),
         'Reinitialize application with full reload and optionally start streaming',
         [
@@ -575,11 +575,11 @@ const AppContent: React.FC = () => {
         },
         'Add multiple items to the cart in a single operation',
         [
-          { 
-            name: 'items', 
-            type: 'array', 
-            description: 'Array of items to add. Each item should have: menuItemId, name, price, quantity (optional), customizations (optional)', 
-            required: true 
+          {
+            name: 'items',
+            type: 'array',
+            description: 'Array of items to add. Each item should have: menuItemId, name, price, quantity (optional), customizations (optional)',
+            required: true
           }
         ]
       ),
@@ -589,8 +589,8 @@ const AppContent: React.FC = () => {
         },
         'Add a single customization to a specific item in the cart',
         [
-          { name: 'cartItemId', type: 'string', description: 'The unique id of the item in the cart', required: true},
-          { name: 'customization', type: 'object', description: 'The customization object to add (must have id, name, price, type)', required: true}
+          { name: 'cartItemId', type: 'string', description: 'The unique id of the item in the cart', required: true },
+          { name: 'customization', type: 'object', description: 'The customization object to add (must have id, name, price, type)', required: true }
         ]
       ),
       removeCustomizationFromCartItem: createMethodDescriptor(
@@ -599,8 +599,8 @@ const AppContent: React.FC = () => {
         },
         'Removes a specific customization applied to an item in the cart',
         [
-          { name: 'cartItemId', type: 'string', description: 'The unique id of the item in the cart', required: true},
-          { name: 'customizationId', type: 'string', description: 'The id of the customization to be removed from the item in the cart', required: true}
+          { name: 'cartItemId', type: 'string', description: 'The unique id of the item in the cart', required: true },
+          { name: 'customizationId', type: 'string', description: 'The id of the customization to be removed from the item in the cart', required: true }
         ]
       ),
       removeFromCart: createMethodDescriptor(
@@ -618,11 +618,11 @@ const AppContent: React.FC = () => {
         },
         'Remove multiple items from the cart in a single operation',
         [
-          { 
-            name: 'cartItemIds', 
-            type: 'array', 
-            description: 'Array of cart item IDs to remove', 
-            required: true 
+          {
+            name: 'cartItemIds',
+            type: 'array',
+            description: 'Array of cart item IDs to remove',
+            required: true
           }
         ]
       ),
@@ -632,11 +632,11 @@ const AppContent: React.FC = () => {
         },
         'Get a single cart item by its cart item ID',
         [
-          { 
-            name: 'cartItemId', 
-            type: 'string', 
-            description: 'The unique cart item ID to retrieve', 
-            required: true 
+          {
+            name: 'cartItemId',
+            type: 'string',
+            description: 'The unique cart item ID to retrieve',
+            required: true
           }
         ]
       ),
@@ -730,7 +730,7 @@ const AppContent: React.FC = () => {
 
     window.addEventListener('storage', handleStorageChange);
     window.addEventListener('settingsUpdated', handleSettingsUpdate);
-    
+
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('settingsUpdated', handleSettingsUpdate);
@@ -743,7 +743,7 @@ const AppContent: React.FC = () => {
       const configured = SettingsManager.isConfigured();
       const incomplete = SettingsManager.getIncompleteSettings();
       const existingSettings = SettingsManager.getSettings();
-      
+
       console.log('🔍 App configuration check:', {
         configured,
         incomplete,
@@ -752,7 +752,7 @@ const AppContent: React.FC = () => {
         existingSettings: existingSettings ? 'exists' : 'null',
         cognitoSettings: existingSettings?.cognito
       });
-      
+
       // Only set isConfigured to false if configuration is actually incomplete
       // Don't change isConfigured just because we're editing settings
       setIsConfigured(configured);
@@ -795,61 +795,61 @@ const AppContent: React.FC = () => {
   // Configuration handlers
   const handleConfigSet = useCallback(async () => {
     console.log("⚙️ App: Configuration saved, refreshing app state and running initialization");
-    
+
     try {
       // Set configuration state first
       setIsConfigured(true);
       setIsEditingConfig(false);
-      
+
       // Show status that we're refreshing
       setStatus({ text: "Refreshing application state...", className: "connecting" });
-      
+
       // Reset component states before initialization
       console.log("🔄 App: Resetting component states (chat, cart, menu)");
-      
+
       // Clear chat messages
       setChat({ history: [] });
       if (chatHistoryManagerRef.current) {
         (chatHistoryManagerRef.current as any).clearHistory();
       }
-      
+
       // Clear cart items
       if (shoppingCartRef.current?.clearCart) {
         shoppingCartRef.current.clearCart();
       }
-      
+
       // Clear menu items
       if (menuDisplayRef.current?.clearMenu) {
         menuDisplayRef.current.clearMenu();
       }
-      
+
       // Clear notifications
       setNotifications([]);
-      
+
       console.log("✅ App: Component states reset successfully");
-      
+
       // Update tool executor context with fresh settings
       setStatus({ text: "Updating tool configurations...", className: "connecting" });
       const context = getExecutionContext();
       toolExecutor.setExecutionContext(context);
-      
+
       // Add a small delay to allow React to process the state resets
       console.log("⏳ App: Waiting for React to process state resets...");
       await new Promise(resolve => setTimeout(resolve, 300));
-      
+
       // Wait for components to be ready
       setStatus({ text: "Initializing components...", className: "connecting" });
       await waitForComponentsReady();
-      
+
       // Update tool executor context with all registered components
       const updatedContext = getExecutionContext();
       toolExecutor.setExecutionContext(updatedContext);
       console.log("🔧 App: Updated tool context with refreshed components:", Object.keys(updatedContext.components));
-      
+
       // Execute initialization tools after refresh
       setStatus({ text: "Running initialization tools...", className: "connecting" });
       const toolResult = await toolExecutor.executeInitializationTools();
-      
+
       if (toolResult.executed) {
         setStatus({ text: "Application refreshed successfully", className: "ready" });
         setToolsSkippedDuringConfig(false);
@@ -859,7 +859,7 @@ const AppContent: React.FC = () => {
         setToolsSkippedDuringConfig(true);
         console.log(`⚠️ App: Configuration saved but tools skipped - ${toolResult.reason}`);
       }
-      
+
     } catch (error) {
       console.error("❌ App: Failed to refresh application after configuration change:", error);
       setStatus({ text: "Application refresh failed", className: "error" });
@@ -879,7 +879,7 @@ const AppContent: React.FC = () => {
     try {
       console.log('🚀 Quick Start: Loading default configuration');
       const result = await SettingsManager.initializeWithDefaults();
-      
+
       if (result.loaded) {
         setShowQuickStart(false);
         setIsEditingConfig(true); // Open settings for Cognito configuration
@@ -906,24 +906,60 @@ const AppContent: React.FC = () => {
     setIsEditingConfig(true); // Open settings for manual configuration
   };
 
+  const handleQuickStartLoadSample = async (sampleId: string) => {
+    try {
+      console.log('🚀 Quick Start: Loading sample configuration:', sampleId);
+
+      // Load sample settings from the samples directory
+      const response = await fetch(`/samples/${sampleId}/settings.json`);
+      if (!response.ok) {
+        throw new Error(`Failed to load sample: ${response.statusText}`);
+      }
+
+      const sampleSettings = await response.json();
+
+      // Load the sample configuration using SettingsManager
+      const result = await SettingsManager.initializeWithSettings(sampleSettings.settings);
+
+      if (result.loaded) {
+        setShowQuickStart(false);
+        setIsEditingConfig(true); // Open settings for Cognito configuration
+        showNotification(
+          `${sampleId} sample loaded! Please configure your AWS Cognito settings to continue.`,
+          "success",
+          { duration: 8000 }
+        );
+      } else {
+        setShowQuickStart(false);
+        setIsEditingConfig(true);
+      }
+    } catch (error) {
+      console.error('Error loading sample from Quick Start:', error);
+      showNotification(
+        `Error loading ${sampleId} sample. Please try manual setup.`,
+        "error"
+      );
+    }
+  };
+
   // Handle sign out
   const handleSignOut = async () => {
     try {
       console.log('Signing out...');
-      
+
       // Stop streaming if active
       if (isStreaming) {
         stopStreaming();
       }
-      
+
       // Clear credentials and reset state
       SettingsManager.clearCredentials();
       setIsAuthenticated(false);
       isAuthenticatedRef.current = false; // Reset authentication ref
-      
+
       // Sign out from AWS Cognito
       await signOut();
-      
+
       console.log('Successfully signed out');
     } catch (error) {
       console.error('Error signing out:', error);
@@ -940,28 +976,28 @@ const AppContent: React.FC = () => {
       console.log("🔐 App: Authentication successful, running initialization");
       setIsAuthenticated(true);
       isAuthenticatedRef.current = true; // Prevent double execution
-      
+
       // Initial tool executor context setup
       const context = getExecutionContext();
       toolExecutor.setExecutionContext(context);
-      
+
       // Wait for all components to be registered before executing initialization tools
       try {
         setStatus({ text: "Initializing components...", className: "connecting" });
-        
+
         // Add a small delay to allow React to render the MenuDisplay and ShoppingCart components
         // These components are rendered after authentication, so we need to wait for them
         console.log("🔐 App: Waiting for React to render authenticated components...");
         await new Promise(resolve => setTimeout(resolve, 500)); // 500ms delay
-        
+
         // Wait for components to be ready (including menu, cart, and any others)
         await waitForComponentsReady();
-        
+
         // Update tool executor context with all registered components
         const updatedContext = getExecutionContext();
         toolExecutor.setExecutionContext(updatedContext);
         console.log("🔧 App: Updated tool context with all components:", Object.keys(updatedContext.components));
-        
+
         // Execute initialization tools after all components are ready
         // This includes retrying tools that were skipped during configuration save
         if (toolsSkippedDuringConfig) {
@@ -970,9 +1006,9 @@ const AppContent: React.FC = () => {
         } else {
           setStatus({ text: "Running initialization tools...", className: "connecting" });
         }
-        
+
         const toolResult = await toolExecutor.executeInitializationTools();
-        
+
         if (toolResult.executed) {
           setStatus({ text: "Initialization complete", className: "ready" });
           setToolsSkippedDuringConfig(false); // Clear the flag since tools ran successfully
@@ -992,13 +1028,13 @@ const AppContent: React.FC = () => {
 
   // Notification management functions
   const showNotification = useCallback((
-    message: string, 
+    message: string,
     type: 'info' | 'success' | 'warning' | 'error' = 'info',
     options: { autoDismiss?: boolean; duration?: number } = {}
   ): string => {
     const id = `notification-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const { autoDismiss = true, duration = 5000 } = options;
-    
+
     const notification: Notification = {
       id,
       message,
@@ -1007,16 +1043,16 @@ const AppContent: React.FC = () => {
       autoDismiss,
       duration
     };
-    
+
     setNotifications(prev => [...prev, notification]);
-    
+
     // Auto-dismiss if enabled
     if (autoDismiss) {
       setTimeout(() => {
         removeNotification(id);
       }, duration);
     }
-    
+
     console.log(`📢 Notification shown: ${type.toUpperCase()} - ${message} (ID: ${id})`);
     return id;
   }, []);
@@ -1034,13 +1070,13 @@ const AppContent: React.FC = () => {
   // Save-only callback (doesn't close settings or trigger full refresh)
   const handleConfigSaveOnly = useCallback(() => {
     console.log("💾 App: Configuration saved (staying in settings)");
-    
+
     // Just update the configuration state without closing settings
     setIsConfigured(true);
-    
+
     // Show a brief success status
     setStatus({ text: "Settings saved successfully", className: "ready" });
-    
+
     // Show success notification
     showNotification("Settings saved successfully", "success", { duration: 3000 });
   }, [showNotification]);
@@ -1072,7 +1108,7 @@ const AppContent: React.FC = () => {
 
       audioContextRef.current = audioContext;
       samplingRatioRef.current = audioContext.sampleRate / TARGET_SAMPLE_RATE;
-      
+
       console.log(
         `Debug AudioContext- sampleRate: ${audioContext.sampleRate} samplingRatio: ${samplingRatioRef.current}`,
       );
@@ -1099,7 +1135,7 @@ const AppContent: React.FC = () => {
         const loadAndRegisterTools = async () => {
           try {
             const processedTools = await toolExecutor.loadToolsFromConfig();
-            
+
             const toolsForSession = processedTools.map(tool => ({
               toolname: tool.toolname,
               definition: tool.definition,
@@ -1107,17 +1143,21 @@ const AppContent: React.FC = () => {
             }));
 
             console.log("App::initializeSession::Session created:", data);
-            target.dispatchEvent(new CustomEvent("initiateSession", {detail: {
-              sessionId: data,
-              tools: toolsForSession
-            }}));
+            target.dispatchEvent(new CustomEvent("initiateSession", {
+              detail: {
+                sessionId: data,
+                tools: toolsForSession
+              }
+            }));
           } catch (error) {
             console.error("Failed to load tools:", error);
             // Continue without tools
-            target.dispatchEvent(new CustomEvent("initiateSession", {detail: {
-              sessionId: data,
-              tools: []
-            }}));
+            target.dispatchEvent(new CustomEvent("initiateSession", {
+              detail: {
+                sessionId: data,
+                tools: []
+              }
+            }));
           }
         };
 
@@ -1127,13 +1167,13 @@ const AppContent: React.FC = () => {
       const handleSessionInitiated = () => {
         try {
           console.log("App::initializeSession::Session initiated - dispatching sequence events");
-          
+
           // Read current agent configuration for system prompt
           const agentConfig = SettingsManager.getAgentConfig();
           const systemPrompt = agentConfig.system_prompt;
-          
+
           console.log("App::initializeSession::Using system prompt:", systemPrompt);
-          
+
           target.dispatchEvent(new Event("promptStart"));
           target.dispatchEvent(
             new CustomEvent("systemPrompt", { detail: systemPrompt }),
@@ -1142,18 +1182,18 @@ const AppContent: React.FC = () => {
 
           sessionInitializedRef.current = true;
           setStatus({ text: "Session initialized successfully", className: "ready" });
-          
+
           target.removeEventListener("sessionCreated", handleSessionCreated);
           target.removeEventListener("sessionInitiated", handleSessionInitiated);
-          
+
           resolve();
         } catch (error) {
           console.error("Failed to initialize session:", error);
           setStatus({ text: "Error initializing session", className: "error" });
-          
+
           target.removeEventListener("sessionCreated", handleSessionCreated);
           target.removeEventListener("sessionInitiated", handleSessionInitiated);
-          
+
           reject(error);
         }
       };
@@ -1249,10 +1289,10 @@ const AppContent: React.FC = () => {
       const settings = SettingsManager.getSettings();
       if (settings?.agent?.autoInitiateConversation && settings?.agent?.initiationAudio) {
         console.log("App::startStreaming::Auto-initiating conversation with pre-recorded audio");
-        
+
         // Set flag to skip first user message
         autoInitiateFirstMessageRef.current = true;
-        
+
         // Small delay to ensure streaming is fully established
         setTimeout(async () => {
           try {
@@ -1264,16 +1304,16 @@ const AppContent: React.FC = () => {
             for (let i = 0; i < binaryString.length; i++) {
               bytes[i] = binaryString.charCodeAt(i);
             }
-            
+
             // Create a temporary audio context for decoding
             const tempAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
             const audioBuffer = await tempAudioContext.decodeAudioData(bytes.buffer);
-            
+
             // Get PCM data and resample to 16kHz if needed
             const sampleRate = audioBuffer.sampleRate;
             const targetSampleRate = 16000;
             const pcmData = audioBuffer.getChannelData(0);
-            
+
             let finalPcmData = pcmData;
             if (sampleRate !== targetSampleRate) {
               // Simple resampling
@@ -1284,22 +1324,22 @@ const AppContent: React.FC = () => {
                 finalPcmData[i] = pcmData[Math.floor(i * ratio)];
               }
             }
-            
+
             // Convert to Int16Array (same format as microphone input)
             const int16Data = new Int16Array(finalPcmData.length);
             for (let i = 0; i < finalPcmData.length; i++) {
               int16Data[i] = Math.max(-1, Math.min(1, finalPcmData[i])) * 0x7fff;
             }
-            
+
             // Send to Nova Sonic
             const base64InitAudio = arrayBufferToBase64(int16Data.buffer);
             target.dispatchEvent(
               new CustomEvent("audioInput", { detail: base64InitAudio }),
             );
-            
+
             console.log("App::startStreaming::Auto-initiation audio sent to Nova Sonic");
             tempAudioContext.close();
-            
+
           } catch (error) {
             console.error("App::startStreaming::Error sending auto-initiation audio:", error);
           }
@@ -1374,14 +1414,14 @@ const AppContent: React.FC = () => {
   // Handle text output
   const processTextOutput = useCallback((data: { role: string; content: string }): void => {
     console.log("Processing text output:", data);
-    
+
     // Skip first user message if auto-initiate is enabled
     if (data.role === "USER" && autoInitiateFirstMessageRef.current) {
       console.log("Skipping first user message due to auto-initiate");
       autoInitiateFirstMessageRef.current = false; // Reset flag after skipping
       return;
     }
-    
+
     if (data.content && chatHistoryManagerRef.current) {
       const messageData = {
         role: data.role,
@@ -1510,9 +1550,9 @@ const AppContent: React.FC = () => {
     const handleError = (e: Event) => {
       const error = (e as CustomEvent).detail;
       console.error("Event proxy error:", error);
-      setStatus({ 
-        text: `Error: ${error.message || JSON.stringify(error).substring(0, 100)}`, 
-        className: "error" 
+      setStatus({
+        text: `Error: ${error.message || JSON.stringify(error).substring(0, 100)}`,
+        className: "error"
       });
       setWaitingForUserTranscription(false);
       setWaitingForAssistantResponse(false);
@@ -1557,13 +1597,13 @@ const AppContent: React.FC = () => {
       const hash = window.location.hash;
       if (hash.includes('autoStart')) {
         console.log("🚀 Auto-starting streaming due to #autoStart in URL");
-        
+
         // Mark as processed to prevent re-triggering
         autoStartProcessedRef.current = true;
-        
+
         // Clean the URL hash after detecting autoStart
         window.history.replaceState(null, '', window.location.pathname + window.location.search);
-        
+
         setTimeout(() => {
           startStreaming();
         }, 1000);
@@ -1576,6 +1616,7 @@ const AppContent: React.FC = () => {
     return (
       <QuickStartDialog
         onLoadDefaults={handleQuickStartLoadDefaults}
+        onLoadSample={handleQuickStartLoadSample}
         onSkip={handleQuickStartSkip}
       />
     );
@@ -1609,17 +1650,17 @@ const AppContent: React.FC = () => {
           />
         </div>
       )}
-      
-      <AuthComponent 
+
+      <AuthComponent
         onEditConfigClick={handleEditConfig}
         onAuthStatusChange={handleAuthenticationSuccess}
       >
         <div className="app-container">
-          <ToastNotifications 
+          <ToastNotifications
             notifications={notifications}
             onRemove={removeNotification}
           />
-          
+
           {/* Full-width header */}
           <div className="app-header">
             <div className="app-title">
@@ -1627,14 +1668,14 @@ const AppContent: React.FC = () => {
               <p className="powered-by-subtext">{POWERED_BY_TEXT}</p>
             </div>
             <div className="app-controls">
-              <button 
+              <button
                 className="settings-btn"
                 onClick={handleEditSettings}
                 title="Edit settings"
               >
                 ⚙️ Settings
               </button>
-              <button 
+              <button
                 className="logout-btn"
                 onClick={handleSignOut}
                 title="Sign out"
@@ -1658,7 +1699,7 @@ const AppContent: React.FC = () => {
                     disabled={status.className === "disconnected" || status.className === "error"}
                   />
                 </div>
-                <ChatContainer 
+                <ChatContainer
                   chat={chat}
                   waitingForUserTranscription={waitingForUserTranscription}
                   waitingForAssistantResponse={waitingForAssistantResponse}
@@ -1682,7 +1723,7 @@ const AppContent: React.FC = () => {
             </div>
           </div>
         </div>
-        
+
         {/* Restart Overlay */}
         {restartOverlay.visible && (
           <div className="restart-overlay">

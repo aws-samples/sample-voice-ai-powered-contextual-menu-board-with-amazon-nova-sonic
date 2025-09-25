@@ -389,12 +389,12 @@ export const SettingsComponent: React.FC<SettingsComponentProps> = ({
 
   // Company name editing handlers
   const startEditingCompanyName = () => {
-    setTempCompanyName(settings.agent.companyName || 'Your Drive-thru company');
+    setTempCompanyName(settings.agent.companyName || 'Your voice AI ordering');
     setIsEditingCompanyName(true);
   };
 
   const saveCompanyName = () => {
-    handleAgentChange('companyName', tempCompanyName.trim() || 'Your Drive-thru company');
+    handleAgentChange('companyName', tempCompanyName.trim() || 'Your voice AI ordering');
     setIsEditingCompanyName(false);
     
     // Dispatch event to update App title immediately
@@ -623,7 +623,7 @@ export const SettingsComponent: React.FC<SettingsComponentProps> = ({
               ) : (
                 <div className="title-display-mode">
                   <h1>
-                    🚗 <span className="company-name">{settings.agent.companyName || 'Your Drive-thru company'}</span> <span className="studio-suffix">Studio</span>
+                    🚗 <span className="company-name">{settings.agent.companyName || 'Your voice AI ordering'}</span> <span className="studio-suffix">Studio</span>
                     <button onClick={startEditingCompanyName} className="edit-title-btn" title="Edit company name">✏️</button>
                   </h1>
                 </div>

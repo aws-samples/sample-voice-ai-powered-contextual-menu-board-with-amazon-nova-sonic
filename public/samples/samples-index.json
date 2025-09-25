@@ -1,0 +1,51 @@
+{
+  "version": "1.0",
+  "lastUpdated": "2025-01-15T00:00:00.000Z",
+  "samples": [
+    {
+      "id": "drive-thru",
+      "name": "AI Drive-Thru Experience",
+      "description": "Fast food drive-thru with voice ordering and menu management",
+      "industry": "QSR",
+      "complexity": "intermediate",
+      "icon": "🚗",
+      "features": ["Voice AI", "Menu Management", "Cart System", "Loyalty Program"],
+      "estimatedSetupTime": "2 minutes",
+      "tags": ["drive-thru", "fast-food", "voice-ordering"],
+      "preview": {
+        "image": "/samples/drive-thru/preview.jpg",
+        "description": "Complete drive-thru experience with AI voice ordering, dynamic menu display, and shopping cart management."
+      }
+    },
+    {
+      "id": "coffee-shop",
+      "name": "Coffee Shop Barista",
+      "description": "Artisan coffee shop with custom drink ordering and barista recommendations",
+      "industry": "Coffee & Beverages",
+      "complexity": "beginner",
+      "icon": "☕",
+      "features": ["Custom Drinks", "Barista AI", "Recommendations", "Seasonal Menu"],
+      "estimatedSetupTime": "1 minute",
+      "tags": ["coffee", "beverages", "customization"],
+      "preview": {
+        "image": "/samples/coffee-shop/preview.jpg",
+        "description": "Friendly barista AI that helps customers create custom coffee drinks and provides recommendations."
+      }
+    },
+    {
+      "id": "pizza-delivery",
+      "name": "Pizza Delivery Ordering",
+      "description": "Pizza restaurant with delivery ordering, size options, and topping customization",
+      "industry": "Pizza & Italian",
+      "complexity": "intermediate",
+      "icon": "🍕",
+      "features": ["Delivery Tracking", "Custom Toppings", "Size Options", "Deals & Combos"],
+      "estimatedSetupTime": "2 minutes",
+      "tags": ["pizza", "delivery", "customization"],
+      "preview": {
+        "image": "/samples/pizza-delivery/preview.jpg",
+        "description": "Complete pizza ordering system with delivery options, custom toppings, and combo deals."
+      }
+    }
+  ]
+}

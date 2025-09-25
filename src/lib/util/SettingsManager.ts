@@ -800,6 +800,45 @@ export class SettingsManager {
   }
 
   /**
+   * Initialize app with provided sample configuration
+   * Preserves existing Cognito settings if they exist
+   */
+  static async initializeWithSettings(sampleSettings: any): Promise<{ loaded: boolean; hadExistingSettings: boolean }> {
+    try {
+      const existingSettings = this.getSettings();
+      let existingCognito = null;
+      
+      // Preserve existing Cognito settings if they exist and are configured
+      if (existingSettings?.cognito) {
+        const cognito = existingSettings.cognito;
+        if (cognito.userPoolId && cognito.userPoolClientId && cognito.identityPoolId) {
+          existingCognito = cognito;
+          console.log('🔧 Preserving existing Cognito configuration');
+        }
+      }
+      
+      // Use existing Cognito settings or clear them for user configuration
+      const configToSave = {
+        ...sampleSettings,
+        cognito: existingCognito || {
+          userPoolId: '',
+          userPoolClientId: '',
+          identityPoolId: '',
+          region: sampleSettings.cognito?.region || 'us-east-1'
+        }
+      };
+      
+      this.saveSettings(configToSave);
+      console.log('✅ Sample configuration initialized successfully');
+      return { loaded: true, hadExistingSettings: !!existingSettings };
+      
+    } catch (error) {
+      console.error('Error initializing with sample settings:', error);
+      return { loaded: false, hadExistingSettings: false };
+    }
+  }
+
+  /**
    * Load default configuration and merge with existing settings
    * Preserves existing Cognito settings
    */

@@ -4346,6 +4346,7 @@ button:focus-visible {
   justify-content: center;
   padding: 20px;
   box-sizing: border-box;
+  overflow: auto;
 }
 
 .quick-start-dialog {
@@ -4508,10 +4509,6 @@ button:focus-visible {
 
 /* Responsive Quick Start */
 @media (max-height: 750px) {
-  .quick-start-overlay {
-    overflow: auto;
-  }
-
   .quick-start-dialog {
     max-height: fit-content;
     margin-top: 120px;
@@ -4760,5 +4757,214 @@ button:focus-visible {
 
   100% {
     transform: rotate(360deg);
+  }
+}/* ===== SAM
+PLE SELECTION STYLES ===== */
+
+.quick-start-dialog.sample-selection {
+  max-width: 900px;
+}
+
+.samples-loading {
+  text-align: center;
+  padding: 2rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.loading-spinner {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+  animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.samples-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+  margin: 2rem 0;
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 0.5rem;
+}
+
+.sample-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 1.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.sample-card:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+}
+
+.sample-card.selected {
+  background: rgba(76, 175, 80, 0.1);
+  border-color: #4CAF50;
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.3);
+}
+
+.sample-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.sample-icon {
+  font-size: 2.5rem;
+  flex-shrink: 0;
+}
+
+.sample-info {
+  flex: 1;
+}
+
+.sample-info h3 {
+  margin: 0 0 0.5rem 0;
+  color: white;
+  font-size: 1.2rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.sample-meta {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.industry-badge {
+  background: rgba(33, 150, 243, 0.2);
+  color: #2196F3;
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.complexity-badge {
+  color: white;
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sample-description {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.9rem;
+  line-height: 1.4;
+  margin: 0 0 1rem 0;
+}
+
+.sample-features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+.feature-tag {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+  padding: 0.3rem 0.6rem;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.feature-tag.more {
+  background: rgba(255, 193, 7, 0.2);
+  color: #FFC107;
+  border-color: rgba(255, 193, 7, 0.3);
+}
+
+.sample-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: auto;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.setup-time {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+/* Responsive adjustments for sample selection */
+@media (max-width: 768px) {
+  .quick-start-dialog.sample-selection {
+    width: 95%;
+    max-height: 95vh;
+  }
+  
+  .samples-grid {
+    grid-template-columns: 1fr;
+    max-height: 350px;
+  }
+  
+  .sample-card {
+    padding: 1rem;
+  }
+  
+  .sample-header {
+    gap: 0.75rem;
+  }
+  
+  .sample-icon {
+    font-size: 2rem;
+  }
+  
+  .sample-info h3 {
+    font-size: 1.1rem;
+  }
+  
+  .quick-start-actions {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .quick-start-btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .sample-header {
+    flex-direction: column;
+    text-align: center;
+    gap: 0.5rem;
+  }
+  
+  .sample-icon {
+    font-size: 1.8rem;
+  }
+  
+  .sample-meta {
+    justify-content: center;
+  }
+  
+  .sample-features {
+    justify-content: center;
   }
 }

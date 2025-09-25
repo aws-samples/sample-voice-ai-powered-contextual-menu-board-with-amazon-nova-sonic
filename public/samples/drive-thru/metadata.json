@@ -1,0 +1,35 @@
+{
+  "id": "drive-thru",
+  "name": "AI Drive-Thru Experience",
+  "description": "Complete fast food drive-thru experience with voice ordering, menu management, and shopping cart functionality",
+  "industry": "QSR",
+  "complexity": "intermediate",
+  "icon": "🚗",
+  "version": "1.0.0",
+  "author": "Amazon Nova Team",
+  "features": [
+    "Voice AI ordering with Nova Sonic",
+    "Dynamic menu management",
+    "Shopping cart with customizations",
+    "Loyalty program integration",
+    "Combo detection and pricing",
+    "Real-time order processing"
+  ],
+  "estimatedSetupTime": "2 minutes",
+  "tags": ["drive-thru", "fast-food", "voice-ordering", "qsr"],
+  "requirements": {
+    "cognito": true,
+    "bedrock": true,
+    "apiGateway": true
+  },
+  "preview": {
+    "image": "/samples/drive-thru/preview.jpg",
+    "description": "Experience the future of drive-thru ordering with AI-powered voice interactions, real-time menu updates, and seamless cart management."
+  },
+  "setupInstructions": [
+    "Configure your Amazon Cognito User Pool and Identity Pool",
+    "Set up API Gateway endpoints for menu and cart operations",
+    "Ensure Amazon Bedrock Nova Sonic access in your region",
+    "Test voice permissions in your browser"
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "id": "pizza-delivery",
+  "name": "Pizza Delivery Ordering",
+  "description": "Complete pizza restaurant experience with delivery ordering, size options, and topping customization",
+  "industry": "Pizza & Italian",
+  "complexity": "intermediate",
+  "icon": "🍕",
+  "version": "1.0.0",
+  "author": "Amazon Nova Team",
+  "features": [
+    "Enthusiastic pizza expert AI (Tony)",
+    "Multiple pizza sizes and crusts",
+    "Extensive topping customizations",
+    "Family deals and combo pricing",
+    "Sides, salads, and desserts",
+    "Delivery time estimates"
+  ],
+  "estimatedSetupTime": "2 minutes",
+  "tags": ["pizza", "delivery", "customization", "family-deals"],
+  "requirements": {
+    "cognito": true,
+    "bedrock": true,
+    "apiGateway": false
+  },
+  "preview": {
+    "image": "/samples/pizza-delivery/preview.jpg",
+    "description": "Meet Tony, your pizza expert who helps create the perfect pizza order with size recommendations, topping combinations, and family deals."
+  },
+  "setupInstructions": [
+    "Configure your Amazon Cognito User Pool and Identity Pool",
+    "Ensure Amazon Bedrock Nova Sonic access in your region",
+    "Test voice permissions in your browser",
+    "Start ordering delicious pizzas!"
+  ]
+}

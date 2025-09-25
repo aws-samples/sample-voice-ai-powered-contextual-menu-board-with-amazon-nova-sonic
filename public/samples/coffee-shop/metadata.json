@@ -1,0 +1,35 @@
+{
+  "id": "coffee-shop",
+  "name": "Coffee Shop Barista",
+  "description": "Artisan coffee shop experience with custom drink ordering and barista recommendations",
+  "industry": "Coffee & Beverages",
+  "complexity": "beginner",
+  "icon": "☕",
+  "version": "1.0.0",
+  "author": "Amazon Nova Team",
+  "features": [
+    "Friendly barista AI personality",
+    "Custom coffee drink builder",
+    "Milk alternatives and syrups",
+    "Seasonal drink recommendations",
+    "Coffee knowledge sharing",
+    "Pastry and snack suggestions"
+  ],
+  "estimatedSetupTime": "1 minute",
+  "tags": ["coffee", "beverages", "customization", "barista"],
+  "requirements": {
+    "cognito": true,
+    "bedrock": true,
+    "apiGateway": false
+  },
+  "preview": {
+    "image": "/samples/coffee-shop/preview.jpg",
+    "description": "Meet Maya, your friendly AI barista who helps create the perfect coffee experience with personalized recommendations and expert knowledge."
+  },
+  "setupInstructions": [
+    "Configure your Amazon Cognito User Pool and Identity Pool",
+    "Ensure Amazon Bedrock Nova Sonic access in your region",
+    "Test voice permissions in your browser",
+    "Enjoy the coffee shop experience!"
+  ]
+}
