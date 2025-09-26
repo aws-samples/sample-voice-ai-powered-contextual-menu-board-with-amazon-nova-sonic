@@ -18,6 +18,21 @@
       }
     },
     {
+      "id": "hotel-room-service",
+      "name": "Hotel Room Service Concierge",
+      "description": "Professional hotel concierge for in-room service requests with guest lookup and personalized service",
+      "industry": "Hospitality",
+      "complexity": "advanced",
+      "icon": "🏨",
+      "features": ["Room Validation", "Guest Lookup", "Loyalty Integration", "Service Requests", "Personalized Experience", "Professional Service"],
+      "estimatedSetupTime": "3 minutes",
+      "tags": ["hotel", "concierge", "room-service", "hospitality"],
+      "preview": {
+        "image": "/samples/hotel-room-service/preview.jpg",
+        "description": "Experience luxury hotel service with an AI concierge that validates guest information, provides personalized recommendations, and handles all in-room service requests professionally."
+      }
+    },
+    {
       "id": "coffee-shop",
       "name": "Coffee Shop Barista",
       "description": "Artisan coffee shop with custom drink ordering and barista recommendations",

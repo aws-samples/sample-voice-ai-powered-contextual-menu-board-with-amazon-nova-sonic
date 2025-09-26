@@ -1,0 +1,36 @@
+{
+  "id": "hotel-room-service",
+  "name": "Hotel Room Service Concierge",
+  "description": "Professional hotel concierge for in-room service requests with guest lookup and personalized service",
+  "industry": "Hospitality",
+  "complexity": "advanced",
+  "icon": "🏨",
+  "version": "1.0.0",
+  "author": "Amazon Nova Team",
+  "features": [
+    "Room number validation and guest lookup",
+    "Personalized service based on guest status",
+    "Loyalty program integration",
+    "Housekeeping and room service requests",
+    "Spa and amenity booking",
+    "Professional hospitality language"
+  ],
+  "estimatedSetupTime": "3 minutes",
+  "tags": ["hotel", "concierge", "room-service", "hospitality", "guest-services"],
+  "requirements": {
+    "cognito": true,
+    "bedrock": true,
+    "apiGateway": true
+  },
+  "preview": {
+    "image": "/samples/hotel-room-service/preview.jpg",
+    "description": "Experience luxury hotel service with an AI concierge that validates guest information, provides personalized recommendations, and handles all in-room service requests professionally."
+  },
+  "setupInstructions": [
+    "Configure your Amazon Cognito User Pool and Identity Pool",
+    "Set up API Gateway endpoints for room booking, loyalty, and service APIs",
+    "Ensure Amazon Bedrock Nova Sonic access in your region",
+    "Configure room booking and loyalty system integration",
+    "Test voice permissions and room number validation"
+  ]
+}
