@@ -1,25 +1,27 @@
-# QSR AI Drive-Thru Experience with Amazon Nova Foundation Models
+# Voice AI powered contextual menu board with Amazon Nova Sonic
 
 ## Table of Contents
 - 🏛️ [Architecture Overview](#architecture-overview)
 - 📋 [Solution Overview](#overview) 
-- 💰 [Cost](#cost) 
+- 🎨 [Studio Features](#studio-features)
+- 📦 [Templates](#templates)
+- �  [Cost](#cost) 
 - ✅ [Prerequisites](#prerequisites)
-- 🚀 [Deployment Steps](#deployment-steps)
-- 🔍 [Deployment Validation](#deployment-validation)
-- 📘 [Running the Guidance](#running-the-guidance)
+- � [Depnloyment Steps](#deployment-steps)
+- �  [Deployment Validation](#deployment-validation)
+- � [Runnoing the Guidance](#running-the-guidance)
 - 🔒 [Security Considerations](#security-considerations)
 - 🚀 [Performance Optimization](#performance-optimization)
 - ➡️ [Next Steps](#next-steps)
 - 🧹 [Cleanup](#cleanup)
 - ❓ [FAQ, Known Issues, Additional Considerations, and Limitations](#faq-known-issues-additional-considerations-and-limitations)
-- 📝 [Revisions](#revisions)
+- � [Reviosions](#revisions)
 - ⚠️ [Notices](#notices)
 - 👥 [Authors](#authors)
 
 ## Architecture Overview
 
-The QSR AI Drive-Thru Experience implements a comprehensive voice-enabled ordering system using Amazon Nova Foundation Models:
+The Voice AI powered contextual menu board implements a comprehensive voice-enabled ordering system using Amazon Nova Sonic Foundation Models:
 
 1. **Frontend Application**: React-based voice chat interface with real-time audio processing
 2. **Authentication**: Amazon Cognito manages user authentication and provides temporary AWS credentials
@@ -28,47 +30,188 @@ The QSR AI Drive-Thru Experience implements a comprehensive voice-enabled orderi
 5. **Auto-Initiation**: Pre-recorded audio triggers to start conversations automatically
 6. **Order Management**: Shopping cart and menu display with real-time pricing and customization
 
-This architecture provides a complete drive-thru experience with enterprise-grade security and natural voice interactions.
+This architecture provides a complete voice-enabled ordering experience with enterprise-grade security and natural voice interactions, adaptable to various business scenarios through customizable templates.
 
 ## Solution Overview
 
-This solution demonstrates how to build a production-ready AI-powered drive-thru ordering system using Amazon Nova Foundation Models. The application addresses the need for QSR (Quick Service Restaurant) chains to deploy intelligent voice ordering systems with minimal setup.
+This solution demonstrates how to build a production-ready AI-powered voice ordering system using Amazon Nova Foundation Models. The application addresses the need for businesses across hospitality, QSR, and service industries to deploy intelligent voice ordering systems with minimal setup.
 
-**What**: A React-based voice ordering interface that connects directly to Amazon Bedrock Nova Sonic for natural conversation flow.
+**What**: A React-based voice ordering interface that connects directly to Amazon Bedrock Nova Sonic for natural conversation flow, with a built-in Studio for customizing and building templates.
 
-**Who**: QSR operators, restaurant chains, and developers looking to implement AI-powered drive-thru experiences.
+**Who**: Restaurant chains, hotels, coffee shops, delivery services, and developers looking to implement voice AI-powered customer service experiences across various industries.
 
-**Why**: To provide a complete solution for deploying intelligent voice ordering systems that improve customer experience and operational efficiency.
+**Why**: To provide a complete solution for deploying intelligent voice ordering systems that improve customer experience and operational efficiency with low latency and cost-effectively.
 
 The solution leverages Amazon Bedrock's bidirectional streaming capabilities while implementing secure access through Amazon Cognito's User and Identity Pools for credential management.
+
+## Studio Features
+
+The application includes a powerful **Studio** interface that allows developers to build, customize, and manage AI voice ordering experiences without leaving the browser.
+
+### Visual Tool Builder
+
+- **Monaco Editor Integration**: Professional code editor (same as VS Code) for writing JavaScript tools
+- **Drag-and-Drop Reordering**: Easily organize tool execution order with visual drag-and-drop
+- **Real-time Validation**: Instant feedback on JSON schema and JavaScript syntax errors
+- **Syntax Highlighting**: Full code highlighting and IntelliSense support
+
+### Tool Development
+
+Create custom tools that extend the AI's capabilities:
+
+```javascript
+// Example: Custom tool for checking inventory
+async function execute({...args}) {
+  const { input, components, auth, axios, globals } = args;
+  
+  // Your custom logic here
+  const inventory = await checkInventory(input.itemId);
+  
+  return JSON.stringify({
+    success: true,
+    available: inventory.quantity > 0,
+    quantity: inventory.quantity
+  });
+}
+```
+
+### Configuration Management
+
+- **System Prompt Editor**: Customize AI behavior and conversation flow with Monaco Editor
+- **Global Parameters**: Define reusable variables accessible across all tools
+- **Component Documentation**: Built-in reference for all available components and methods
+- **Auto-Initiation Setup**: Record and configure pre-recorded greeting audio
+
+### Import/Export System
+
+- **Backup & Restore**: Export complete configurations as JSON files
+- **Template Sharing**: Share custom templates with your team
+- **Version Control**: Keep multiple configuration versions
+- **Drag-and-Drop Import**: Simply drag a JSON file to restore settings
+
+### What You Can Build
+
+- Custom menu management systems
+- Loyalty program integrations
+- Payment processing workflows
+- Kitchen display system connections
+- Analytics and reporting tools
+- Multi-location management
+- Custom business logic and validations
+
+## Templates
+
+This solution includes pre-configured templates for different business scenarios. Each template comes with industry-specific tools, prompts, and conversation flows.
+
+### Available Templates
+
+#### 🚗 Drive-Thru Experience
+- **Industry**: Quick Service Restaurants (QSR)
+- **Complexity**: Intermediate
+- **Features**: 
+  - Voice ordering with combo detection
+  - Upselling and recommendations
+  - Loyalty program integration
+  - Real-time menu management
+- **Setup Time**: ~2 minutes
+
+#### 🏨 Hotel Room Service Concierge
+- **Industry**: Hospitality
+- **Complexity**: Advanced
+- **Features**:
+  - Room number validation
+  - Guest lookup and personalization
+  - Housekeeping and amenity requests
+  - Professional hospitality language
+  - VIP guest recognition
+- **Setup Time**: ~3 minutes
+
+#### ☕ Coffee Shop Barista
+- **Industry**: Coffee & Beverages
+- **Complexity**: Beginner
+- **Features**:
+  - Custom drink creation
+  - Barista recommendations
+  - Seasonal menu support
+  - Milk and flavor customizations
+- **Setup Time**: ~1 minute
+
+#### 🍕 Pizza Delivery Ordering
+- **Industry**: Pizza & Italian
+- **Complexity**: Intermediate
+- **Features**:
+  - Size and crust options
+  - Custom topping selection
+  - Delivery tracking integration
+  - Combo deals and specials
+- **Setup Time**: ~2 minutes
+
+### Using Templates
+
+1. **Quick Start Dialog**: On first launch, select a template from the Quick Start dialog
+2. **Settings Panel**: Access templates anytime from Settings > Quick Start
+3. **One-Click Load**: Templates automatically configure:
+   - System prompts
+   - Custom tools
+   - Menu items
+   - Global parameters
+   - Company branding
+
+### Creating Custom Templates
+
+Developers can create their own templates for specific business needs:
+
+1. **Build Your Configuration**: Use the Studio to create tools and configure settings
+2. **Export Template**: Export your complete configuration as JSON
+3. **Package Template**: Create a template folder structure:
+   ```
+   public/samples/your-template/
+   ├── metadata.json      # Template information
+   └── settings.json      # Complete configuration
+   ```
+4. **Register Template**: Add entry to `public/samples/samples-index.json`
+5. **Share**: Distribute your template to other locations or teams
+
+**Template Structure Example**:
+```json
+{
+  "id": "your-template",
+  "name": "Your Business Template",
+  "description": "Custom template for your use case",
+  "industry": "Your Industry",
+  "complexity": "intermediate",
+  "icon": "🎯",
+  "features": ["Feature 1", "Feature 2"],
+  "estimatedSetupTime": "2 minutes"
+}
+```
 
 ### Key Features
 
 - **🎤 Real-time Voice Interaction**: Natural conversation flow with immediate AI responses
-- **🚗 Auto-Initiate Conversations**: Pre-recorded greetings trigger automatically when customers arrive
+- **🚗 Auto-Initiate Conversations**: Pre-recorded audio allows the application to initiate the conversation automatically
 - **🛒 Shopping Cart Integration**: Full order management with pricing, customization, and checkout
+- **🧑🏽‍💻 Built-in Studio**: Visual tool builder with Monaco Editor for creating and customizing AI tools
+- **📄 Template System**: Pre-built templates for different industries (drive-thru, hotel, coffee shop, pizza delivery)
 - **🏢 Editable Company Branding**: Customizable company names and branding throughout the interface
-- **🔧 Advanced Tool System**: JavaScript-based tools for menu management, order processing, and integrations
+- **🔨 Advanced Tool System**: JavaScript-based tools for menu management, order processing, and integrations
+- **💾 Import/Export**: Backup and restore complete configurations including tools and settings
 - **📱 Professional UI**: Monaco Editor integration, toast notifications, and responsive design
-- **🔐 Enterprise Security**: AWS Cognito authentication with temporary credential management
-
-### Demo
-
-*[Demo video or screenshots would go here]*
+- **🔐 Security**: AWS Cognito authentication with temporary credential management
 
 ### High-Level Steps:
 
-1. Customer approaches the drive-thru and the system auto-initiates with a pre-recorded greeting
+1. Customer initiates interaction and the system auto-starts with a pre-recorded greeting
 2. Amazon Nova Sonic processes the customer's voice input in real-time
 3. AI responds naturally while executing tools to manage menu display and shopping cart
 4. Order details are processed and confirmed through voice interaction
-5. Final order is submitted for kitchen preparation and payment processing
+5. Final order is submitted for processing
 
 ## Cost
 
 You are responsible for the cost of the AWS services used while running this solution.
 
-As of September 2025, the cost for running this solution with default settings in the US East (N. Virginia) Region is approximately **$12.50** per month for a single drive-thru location with moderate usage.
+As of September 2025, the cost for running this solution with default settings in the US East (N. Virginia) Region is approximately **$12.50** per month for a single location with moderate usage.
 
 We recommend creating a [Budget](https://console.aws.amazon.com/billing/home#/budgets) through [AWS Cost Explorer](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/) to help manage costs. Prices are subject to change. For full details, refer to the pricing webpage for each AWS service used in this solution.
 
@@ -256,9 +399,10 @@ frontend:
 ### Initial Setup
 
 1. Launch the application (locally or via Amplify)
-2. Configure your Cognito settings in the Settings panel
-3. Authenticate using your Cognito credentials
-4. Configure company branding and auto-initiate settings as needed
+2. Select a template from the Quick Start dialog (or configure manually)
+3. Configure your Cognito settings in the Settings panel
+4. Authenticate using your Cognito credentials
+5. Customize company branding and auto-initiate settings as needed
 
 ### Voice Ordering Flow
 
@@ -315,8 +459,10 @@ Potential enhancements for production deployment:
 2. **Payment Processing**: Integrate with payment gateways for transaction handling
 3. **Kitchen Display**: Connect to kitchen management systems
 4. **Analytics**: Implement detailed analytics and reporting
-5. **Multi-Location**: Scale to support multiple restaurant locations
+5. **Multi-Location**: Scale to support multiple locations with centralized template management
 6. **Advanced AI**: Enhance with additional Nova models for specialized tasks
+7. **Custom Templates**: Build industry-specific templates for your business needs
+8. **Template Marketplace**: Share and discover templates created by the community
 
 ## Cleanup
 
@@ -367,6 +513,8 @@ Potential enhancements for production deployment:
 - Consider implementing rate limiting for production
 - Tool system allows extensive customization but requires JavaScript knowledge
 - Auto-initiate feature requires pre-recorded audio setup
+- Templates can be customized and shared across multiple locations
+- Studio provides full access to modify all aspects of the AI behavior
 
 ### Limitations
 
