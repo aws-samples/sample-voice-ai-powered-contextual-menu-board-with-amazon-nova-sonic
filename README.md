@@ -5,20 +5,19 @@
 - 📋 [Solution Overview](#overview) 
 - 🎨 [Studio Features](#studio-features)
 - 📦 [Templates](#templates)
-- �  [Cost](#cost) 
+- 💰 [Cost](#cost) 
 - ✅ [Prerequisites](#prerequisites)
-- � [Depnloyment Steps](#deployment-steps)
-- �  [Deployment Validation](#deployment-validation)
-- � [Runnoing the Guidance](#running-the-guidance)
+- 🚀 [Deployment Steps](#deployment-steps)
+- 🔍 [Deployment Validation](#deployment-validation)
+- 📘 [Running the Guidance](#running-the-guidance)
 - 🔒 [Security Considerations](#security-considerations)
 - 🚀 [Performance Optimization](#performance-optimization)
 - ➡️ [Next Steps](#next-steps)
 - 🧹 [Cleanup](#cleanup)
 - ❓ [FAQ, Known Issues, Additional Considerations, and Limitations](#faq-known-issues-additional-considerations-and-limitations)
-- � [Reviosions](#revisions)
+- 📝 [Revisions](#revisions)
 - ⚠️ [Notices](#notices)
 - 👥 [Authors](#authors)
-
 ## Architecture Overview
 
 The Voice AI powered contextual menu board implements a comprehensive voice-enabled ordering system using Amazon Nova Sonic Foundation Models:
