@@ -1,3 +1,6 @@
+> [!NOTE]
+> The content presented here serves as an example intended solely for educational objectives and should not be implemented in a live production environment without proper modifications and rigorous testing.
+
 # Voice AI powered contextual menu board with Amazon Nova Sonic
 
 ## Table of Contents
