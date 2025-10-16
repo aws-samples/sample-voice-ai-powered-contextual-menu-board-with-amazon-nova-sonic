@@ -38,6 +38,10 @@ This architecture provides a complete voice-enabled ordering experience with ent
 
 This solution demonstrates how to build a production-ready AI-powered voice ordering system using Amazon Nova Foundation Models. The application addresses the need for businesses across hospitality, QSR, and service industries to deploy intelligent voice ordering systems with minimal setup.
 
+----
+<img width="1283" height="724" alt="Screenshot 2025-10-16 at 12 33 39 PM" src="https://github.com/user-attachments/assets/75dd618f-1c85-4652-947d-48ea95a0a423" />
+
+----
 **What**: A React-based voice ordering interface that connects directly to Amazon Bedrock Nova Sonic for natural conversation flow, with a built-in Studio for customizing and building templates.
 
 **Who**: Restaurant chains, hotels, coffee shops, delivery services, and developers looking to implement voice AI-powered customer service experiences across various industries.
