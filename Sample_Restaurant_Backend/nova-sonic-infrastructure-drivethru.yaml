@@ -1,0 +1,1524 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Reusable Restaurant Infrastructure - Cognito Auth, S3/CloudFront, DynamoDB, and API Gateway for restaurant ordering systems'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+    Description: Environment name for API Gateway
+    
+  UserEmail:
+    Type: String
+    Description: 'Email address for the initial user. Must be a valid email address'
+    AllowedPattern: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    ConstraintDescription: 'Must be a valid email address'
+
+Resources:
+  # ========================================
+  # Dead Letter Queue for Lambda Functions
+  # ========================================
+  
+  LambdaDeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub ${AWS::StackName}-lambda-dlq
+      MessageRetentionPeriod: 1209600
+      KmsMasterKeyId: alias/aws/sqs
+
+  LambdaDeadLetterQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref LambdaDeadLetterQueue
+      PolicyDocument:
+        Statement:
+          - Effect: Deny
+            Principal: "*"
+            Action: "sqs:*"
+            Resource: !GetAtt LambdaDeadLetterQueue.Arn
+            Condition:
+              Bool:
+                "aws:SecureTransport": "false"
+
+  # ========================================
+  # Cognito User Pool Configuration
+  # ========================================
+  
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UsernameAttributes: []  
+      UsernameConfiguration: 
+        CaseSensitive: false
+      AliasAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+          RequireUppercase: true
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true
+        InviteMessageTemplate:
+          EmailMessage: "<h2>Welcome to the AI Application! 🎯</h2><p>Your account has been created successfully. Here are your login credentials:</p><p><strong>Username</strong> → {username}<br><strong>Temporary Password</strong> → {####}</p><p><em>For security, you'll be prompted to create a new password when you first sign in.</em></p><p>Thank you for choosing our solution!</p>"
+          EmailSubject: "Welcome to the AI Application - Your Account Details"
+      AutoVerifiedAttributes:
+        - email
+      EmailConfiguration:
+        EmailSendingAccount: COGNITO_DEFAULT
+      UserPoolAddOns:
+        AdvancedSecurityMode: ENFORCED
+
+  AppUserGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: AppUsersGroup
+      UserPoolId: !Ref CognitoUserPool
+
+  AppUser:
+    Type: AWS::Cognito::UserPoolUser
+    DependsOn: AppUserGroup
+    Properties:
+      UserPoolId: !Ref CognitoUserPool
+      Username: AppUser
+      UserAttributes:
+        - Name: email
+          Value: !Ref UserEmail
+      DesiredDeliveryMediums:
+        - EMAIL
+  
+  UserGroupAttachment:
+    Type: AWS::Cognito::UserPoolUserToGroupAttachment
+    DependsOn: AppUser
+    Properties:
+      GroupName: !Ref AppUserGroup
+      Username: AppUser
+      UserPoolId: !Ref CognitoUserPool
+
+  AppClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: AppClient
+      UserPoolId: !Ref CognitoUserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_PASSWORD_AUTH
+      SupportedIdentityProviders:
+        - COGNITO
+      CallbackURLs:
+        - http://localhost:3000
+        - https://localhost:3000
+      LogoutURLs:
+        - http://localhost:3000
+        - https://localhost:3000
+      AllowedOAuthFlows:
+        - code
+        - implicit
+      AllowedOAuthScopes:
+        - email
+        - openid
+        - profile
+      AllowedOAuthFlowsUserPoolClient: true
+      RefreshTokenValidity: 30
+      AccessTokenValidity: 24
+      IdTokenValidity: 24
+      TokenValidityUnits:
+        AccessToken: hours
+        IdToken: hours
+        RefreshToken: days
+
+  CognitoUserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: !Sub '${Environment}-app-${AWS::AccountId}'
+      UserPoolId: !Ref CognitoUserPool
+
+  CognitoIdentityPool:
+    Type: AWS::Cognito::IdentityPool
+    Properties:
+      IdentityPoolName: app-identity-pool
+      AllowUnauthenticatedIdentities: false
+      CognitoIdentityProviders: 
+        - ClientId: !Ref AppClient
+          ProviderName: !GetAtt CognitoUserPool.ProviderName
+
+  # ========================================
+  # KMS Key for Encryption
+  # ========================================
+  
+  EncryptionKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: 'KMS key for encrypting DynamoDB tables and other resources'
+      EnableKeyRotation: true
+      KeyPolicy:
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+          - Sid: Allow DynamoDB Service
+            Effect: Allow
+            Principal:
+              Service: dynamodb.amazonaws.com
+            Action:
+              - kms:Decrypt
+              - kms:GenerateDataKey
+            Resource: '*'
+
+  EncryptionKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub 'alias/${AWS::StackName}-encryption-key'
+      TargetKeyId: !Ref EncryptionKey
+
+  CognitoAuthenticatedPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - execute-api:Invoke
+            Resource: 
+              - !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${AppApi}/${Environment}/GET/menu'
+              - !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${AppApi}/${Environment}/OPTIONS/menu'
+              - !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${AppApi}/${Environment}/GET/loyalty'
+              - !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${AppApi}/${Environment}/OPTIONS/loyalty'
+              - !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${AppApi}/${Environment}/POST/cart'
+              - !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${AppApi}/${Environment}/OPTIONS/cart'
+              - !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${AppApi}/${Environment}/POST/order'
+              - !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${AppApi}/${Environment}/OPTIONS/order'
+              - !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${AppApi}/${Environment}/POST/chat'
+              - !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${AppApi}/${Environment}/OPTIONS/chat'
+          - Effect: Allow
+            Action:
+              - bedrock:InvokeModel
+              - bedrock:InvokeModelWithResponseStream
+            Resource: 
+              - !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/amazon.nova-sonic-v1:0'
+              - !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/amazon.nova-canvas-v1:0'
+
+  # ========================================
+  # IAM Roles for Cognito Identity Pool
+  # ========================================
+  
+  AuthenticatedRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: cognito-identity.amazonaws.com
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals: 
+                'cognito-identity.amazonaws.com:aud': !Ref CognitoIdentityPool
+              'ForAnyValue:StringLike':
+                'cognito-identity.amazonaws.com:amr': authenticated
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonCognitoPowerUser
+        - !Ref CognitoAuthenticatedPolicy
+
+  DefaultAuthenticatedRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: cognito-identity.amazonaws.com
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals: 
+                'cognito-identity.amazonaws.com:aud': !Ref CognitoIdentityPool
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonCognitoPowerUser
+
+  CognitoIdentityPoolRoleAttachment:
+    Type: AWS::Cognito::IdentityPoolRoleAttachment
+    DependsOn: 
+      - AuthenticatedRole
+      - DefaultAuthenticatedRole
+    Properties:
+      IdentityPoolId: !Ref CognitoIdentityPool
+      Roles:
+        authenticated: !GetAtt DefaultAuthenticatedRole.Arn
+      RoleMappings:
+        cognitoidp:
+          Type: Rules
+          AmbiguousRoleResolution: AuthenticatedRole
+          IdentityProvider: !Join ["", [
+            "cognito-idp.", 
+            !Ref "AWS::Region", 
+            ".amazonaws.com/", 
+            !Ref CognitoUserPool,
+            ":",
+            !Ref AppClient
+          ]]
+          RulesConfiguration:
+            Rules:
+              - Claim: "cognito:groups"
+                MatchType: Contains
+                Value: AppUsersGroup
+                RoleARN: !GetAtt AuthenticatedRole.Arn
+
+  # ========================================
+  # S3 Buckets for Images and Configuration
+  # ========================================
+  
+  MenuImagesBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Delete
+    Properties:
+      AccessControl: Private
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Enabled
+      ObjectLockEnabled: true
+      ObjectLockConfiguration:
+        ObjectLockEnabled: Enabled
+        Rule:
+          DefaultRetention:
+            Mode: GOVERNANCE
+            Days: 30
+      LoggingConfiguration:
+        DestinationBucketName: !Ref AccessLogsBucket
+        LogFilePrefix: "menu-images-access-logs/"
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders: ['*']
+            AllowedMethods: [GET, HEAD]
+            AllowedOrigins: ['*']
+            MaxAge: 3600
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  AccessLogsBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Delete
+    Properties:
+      AccessControl: Private
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerPreferred
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Enabled
+      ObjectLockEnabled: true
+      ObjectLockConfiguration:
+        ObjectLockEnabled: Enabled
+        Rule:
+          DefaultRetention:
+            Mode: GOVERNANCE
+            Days: 30
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  AccessLogsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref AccessLogsBucket
+      PolicyDocument:
+        Statement:
+          - Sid: DenyInsecureConnections
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource: 
+              - !Sub 'arn:aws:s3:::${AccessLogsBucket}/*'
+              - !Sub 'arn:aws:s3:::${AccessLogsBucket}'
+            Condition:
+              Bool:
+                "aws:SecureTransport": false
+
+  CloudFrontOriginAccessIdentity:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: !Sub 'OAI for ${Environment}-app-images'
+
+  MenuImagesBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref MenuImagesBucket
+      PolicyDocument:
+        Statement:
+          - Sid: DenyInsecureConnections
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource: 
+              - !Sub 'arn:aws:s3:::${MenuImagesBucket}/*'
+              - !Sub 'arn:aws:s3:::${MenuImagesBucket}'
+            Condition:
+              Bool:
+                "aws:SecureTransport": false
+          - Sid: CloudFrontOriginAccess
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${CloudFrontOriginAccessIdentity}'
+            Action: s3:GetObject
+            Resource: !Sub 'arn:aws:s3:::${MenuImagesBucket}/*'
+
+  MenuImagesCloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    DependsOn: CloudFrontWebACL
+    Properties:
+      DistributionConfig:
+        Comment: !Sub 'App Images CDN - ${Environment}'
+        DefaultRootObject: index.html
+        DefaultCacheBehavior:
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD]
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+          Compress: true
+        Origins:
+          - Id: S3Origin
+            DomainName: !GetAtt MenuImagesBucket.RegionalDomainName
+            S3OriginConfig:
+              OriginAccessIdentity: !Sub 'origin-access-identity/cloudfront/${CloudFrontOriginAccessIdentity}'
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+          MinimumProtocolVersion: TLSv1.2_2021
+        Logging:
+          Bucket: !GetAtt AccessLogsBucket.RegionalDomainName
+          Prefix: cloudfront-logs/
+          IncludeCookies: false
+        WebACLId: !GetAtt CloudFrontWebACL.Arn
+        Enabled: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  CloudFrontWebACL:
+    Type: AWS::WAFv2::WebACL
+    Properties:
+      Name: !Sub '${AWS::StackName}-cloudfront-waf'
+      Scope: CLOUDFRONT
+      DefaultAction:
+        Allow: {}
+      Rules:
+        - Name: AWSManagedRulesCommonRuleSet
+          Priority: 1
+          OverrideAction:
+            None: {}
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesCommonRuleSet
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: CommonRuleSetMetric
+        - Name: AWSManagedRulesKnownBadInputsRuleSet
+          Priority: 2
+          OverrideAction:
+            None: {}
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesKnownBadInputsRuleSet
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: KnownBadInputsRuleSetMetric
+        - Name: Log4jRCEProtection
+          Priority: 3
+          Action:
+            Block: {}
+          Statement:
+            ByteMatchStatement:
+              SearchString: "${jndi:"
+              FieldToMatch:
+                AllQueryArguments: {}
+              TextTransformations:
+                - Priority: 0
+                  Type: URL_DECODE
+                - Priority: 1
+                  Type: HTML_ENTITY_DECODE
+                - Priority: 2
+                  Type: LOWERCASE
+              PositionalConstraint: CONTAINS
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: Log4jRCEProtectionMetric
+      VisibilityConfig:
+        SampledRequestsEnabled: true
+        CloudWatchMetricsEnabled: true
+        MetricName: !Sub '${AWS::StackName}-cloudfront-waf'
+
+  # ========================================
+  # DynamoDB Tables
+  # ========================================
+  
+  MenuTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      SSESpecification:
+        SSEEnabled: true
+        SSEType: KMS
+        KMSMasterKeyId: !Ref EncryptionKey
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  LoyaltyTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: phone
+          AttributeType: S
+        - AttributeName: email
+          AttributeType: S
+        - AttributeName: customerId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: phone
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: EmailIndex
+          KeySchema:
+            - AttributeName: email
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: CustomerIdIndex
+          KeySchema:
+            - AttributeName: customerId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      SSESpecification:
+        SSEEnabled: true
+        SSEType: KMS
+        KMSMasterKeyId: !Ref EncryptionKey
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  CartTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: deviceId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: deviceId
+          KeyType: HASH
+      SSESpecification:
+        SSEEnabled: true
+        SSEType: KMS
+        KMSMasterKeyId: !Ref EncryptionKey
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  OrderTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: orderId
+          AttributeType: S
+        - AttributeName: customerId
+          AttributeType: S
+        - AttributeName: status
+          AttributeType: S
+      KeySchema:
+        - AttributeName: orderId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: CustomerIndex
+          KeySchema:
+            - AttributeName: customerId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: StatusIndex
+          KeySchema:
+            - AttributeName: status
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      SSESpecification:
+        SSEEnabled: true
+        SSEType: KMS
+        KMSMasterKeyId: !Ref EncryptionKey
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  ChatTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: orderId
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: N
+        - AttributeName: messageId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: orderId
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: MessageIdIndex
+          KeySchema:
+            - AttributeName: messageId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      SSESpecification:
+        SSEEnabled: true
+        SSEType: KMS
+        KMSMasterKeyId: !Ref EncryptionKey
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  # ========================================
+  # Managed IAM Policies
+  # ========================================
+  
+  LambdaCloudWatchPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - logs:CreateLogGroup
+            Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*'
+          - Effect: Allow
+            Action:
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*'
+
+  LambdaS3Policy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:PutObject
+              - s3:DeleteObjectVersion
+              - s3:DeleteObject
+            Resource: 
+              - !Sub 'arn:aws:s3:::*menuimagesbucket*/*'
+              - !Sub 'arn:aws:s3:::*accesslogsbucket*/*'
+          - Effect: Allow
+            Action:
+              - s3:ListBucket
+              - s3:ListBucketVersions
+            Resource: 
+              - !Sub 'arn:aws:s3:::*menuimagesbucket*'
+              - !Sub 'arn:aws:s3:::*accesslogsbucket*'
+
+  LambdaDynamoDBPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - dynamodb:UpdateItem
+              - dynamodb:GetItem
+              - dynamodb:Scan
+              - dynamodb:PutItem
+              - dynamodb:DeleteItem
+            Resource: 
+              - !GetAtt MenuTable.Arn
+              - !GetAtt LoyaltyTable.Arn
+              - !GetAtt CartTable.Arn
+              - !GetAtt OrderTable.Arn
+              - !GetAtt ChatTable.Arn
+
+  LambdaBedrockPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - bedrock:InvokeModel
+              - bedrock:InvokeModelWithResponseStream
+            Resource: 
+              - 'arn:aws:bedrock:*::foundation-model/amazon.nova-canvas-v1:0'
+
+  LambdaKMSPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - kms:Decrypt
+              - kms:GenerateDataKey
+              - kms:DescribeKey
+            Resource: !GetAtt EncryptionKey.Arn
+
+  LambdaSQSPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - sqs:SendMessage
+              - sqs:GetQueueAttributes
+            Resource: !Sub 'arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:*-lambda-dlq'
+
+  ApiGatewayDynamoDBPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - dynamodb:GetItem
+              - dynamodb:PutItem
+              - dynamodb:UpdateItem
+              - dynamodb:Query
+              - dynamodb:Scan
+              - dynamodb:BatchGetItem
+              - dynamodb:BatchWriteItem
+            Resource:
+              - !GetAtt MenuTable.Arn
+              - !GetAtt LoyaltyTable.Arn
+              - !GetAtt CartTable.Arn
+              - !GetAtt OrderTable.Arn
+              - !GetAtt ChatTable.Arn
+              - !Sub '${MenuTable.Arn}/index/*'
+              - !Sub '${LoyaltyTable.Arn}/index/*'
+              - !Sub '${CartTable.Arn}/index/*'
+              - !Sub '${OrderTable.Arn}/index/*'
+              - !Sub '${ChatTable.Arn}/index/*'
+          - Effect: Allow
+            Action:
+              - kms:Decrypt
+              - kms:DescribeKey
+            Resource: !GetAtt EncryptionKey.Arn
+
+  # ========================================
+  # IAM Roles for API Gateway and Lambda
+  # ========================================
+  
+  ApiGatewayDynamoDBRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: apigateway.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Ref ApiGatewayDynamoDBPolicy
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Ref LambdaCloudWatchPolicy
+        - !Ref LambdaS3Policy
+        - !Ref LambdaDynamoDBPolicy
+        - !Ref LambdaBedrockPolicy
+        - !Ref LambdaSQSPolicy
+        - !Ref LambdaKMSPolicy
+  # ========================================
+  # API Gateway Configuration
+  # ========================================
+  
+  AppApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub 'app-api'
+      Description: !Sub 'Application API with Cognito Authentication - ${Environment} Environment'
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+      Policy:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action: execute-api:Invoke
+            Resource: '*'
+
+  ApiGatewayAuthorizer:
+    Type: AWS::ApiGateway::Authorizer
+    Properties:
+      Name: CognitoAuthorizer
+      Type: COGNITO_USER_POOLS
+      IdentitySource: method.request.header.Authorization
+      RestApiId: !Ref AppApi
+      ProviderARNs:
+        - !GetAtt CognitoUserPool.Arn
+
+  # Menu API Resources
+  MenuResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref AppApi
+      ParentId: !GetAtt AppApi.RootResourceId
+      PathPart: menu
+
+  MenuGetMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref AppApi
+      ResourceId: !Ref MenuResource
+      HttpMethod: GET
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: !Ref ApiGatewayAuthorizer
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+        - StatusCode: 401
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+      Integration:
+        Type: AWS
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:dynamodb:action/Scan'
+        Credentials: !GetAtt ApiGatewayDynamoDBRole.Arn
+        RequestTemplates:
+          application/json: !Sub |
+            {
+              "TableName": "${MenuTable}"
+            }
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
+            ResponseTemplates:
+              application/json: |
+                #set($inputRoot = $input.path('$'))
+                {
+                  "items": [
+                    #foreach($item in $inputRoot.Items)
+                    {
+                      "id": "$item.id.S",
+                      "name": "$item.name.S",
+                      "description": "$item.description.S",
+                      "price": #if($item.price.N)$item.price.N#else 0#end,
+                      #if($item.discount.N && $item.discount.N != 0 && $item.discount.N != "")"discount": $item.discount.N,#end
+                      "category": [
+                        #foreach($cat in $item.category.SS)
+                        "$cat"#if($foreach.hasNext),#end
+                        #end
+                      ],
+                      "isCombo": $item.isCombo.BOOL,
+                      "availableCustomizations": $item.availableCustomizations.S,
+                      "items": $item.items.S,
+                      "image": #if($item.image.S)"$item.image.S"#else null#end
+                    }#if($foreach.hasNext),#end
+                    #end
+                  ],
+                  "count": $inputRoot.Count,
+                  "authenticated": true
+                }
+
+  MenuOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref AppApi
+      ResourceId: !Ref MenuResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+      Integration:
+        Type: MOCK
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
+  # Loyalty API Resources
+  LoyaltyResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref AppApi
+      ParentId: !GetAtt AppApi.RootResourceId
+      PathPart: loyalty
+
+  LoyaltyGetMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref AppApi
+      ResourceId: !Ref LoyaltyResource
+      HttpMethod: GET
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: !Ref ApiGatewayAuthorizer
+      RequestParameters:
+        method.request.querystring.phone: true
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+        - StatusCode: 401
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+      Integration:
+        Type: AWS
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:dynamodb:action/GetItem'
+        Credentials: !GetAtt ApiGatewayDynamoDBRole.Arn
+        RequestParameters:
+          integration.request.querystring.phone: method.request.querystring.phone
+        RequestTemplates:
+          application/json: !Sub |
+            {
+              "TableName": "${LoyaltyTable}",
+              "Key": {
+                "phone": {"S": "$input.params('phone')"}
+              }
+            }
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
+            ResponseTemplates:
+              application/json: |
+                #set($inputRoot = $input.path('$'))
+                #if($inputRoot.Item.phone.S == $input.params('phone'))
+                {
+                  "customer": {
+                    "phone": "$inputRoot.Item.phone.S",
+                    "customerId": "$inputRoot.Item.customerId.S",
+                    "name": "$inputRoot.Item.name.S",
+                    "email": "$inputRoot.Item.email.S",
+                    "loyaltyPoints": "$inputRoot.Item.loyaltyPoints.N",
+                    "createdAt": "$inputRoot.Item.createdAt.S"
+                  },
+                  "found": true
+                }
+                #else
+                {
+                  "customer": null,
+                  "found": false,
+                  "message": "Customer not found"
+                }
+                #end
+
+  LoyaltyOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref AppApi
+      ResourceId: !Ref LoyaltyResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+      Integration:
+        Type: MOCK
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
+
+  # Cart API Resources
+  CartResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref AppApi
+      ParentId: !GetAtt AppApi.RootResourceId
+      PathPart: cart
+
+  CartPostMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref AppApi
+      ResourceId: !Ref CartResource      
+      HttpMethod: POST
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: !Ref ApiGatewayAuthorizer
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+        - StatusCode: 401
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+      Integration:
+        Type: AWS
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:dynamodb:action/PutItem'
+        Credentials: !GetAtt ApiGatewayDynamoDBRole.Arn
+        RequestTemplates:
+          application/json: !Sub |
+            {
+              "TableName": "${CartTable}",
+              "Item": {
+                "deviceId": {"S": "$input.path('$.deviceId')"},
+                "customerId": {"S": "$input.path('$.loyaltyId')"},
+                "cartSummary": {"S": "$input.path('$.cartSummary')"},
+                "lastUpdatedAt": {"S": "$context.requestTime"}
+              }
+            }
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
+            ResponseTemplates:
+              application/json: |
+                {
+                  "success": true,
+                  "cartItemId": "$context.requestId",
+                  "message": "Item added to cart successfully"
+                }
+
+  CartOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref AppApi
+      ResourceId: !Ref CartResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+      Integration:
+        Type: MOCK
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
+
+  # Order API Resources
+  OrderResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref AppApi
+      ParentId: !GetAtt AppApi.RootResourceId
+      PathPart: order
+
+  OrderPostMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref AppApi
+      ResourceId: !Ref OrderResource
+      HttpMethod: POST
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: !Ref ApiGatewayAuthorizer
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+        - StatusCode: 401
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+      Integration:
+        Type: AWS
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:dynamodb:action/PutItem'
+        Credentials: !GetAtt ApiGatewayDynamoDBRole.Arn
+        RequestTemplates:
+          application/json: !Sub |
+            {
+              "TableName": "${OrderTable}",
+              "Item": {
+                "orderId": {"S": "$context.requestId"},
+                "customerId": {"S": "$input.path('$.customerId')"},
+                "status": {"S": "pending"},
+                "total": {"N": "$input.path('$.total')"},
+                "items": {"S": "$input.path('$.items')"},
+                "createdAt": {"S": "$context.requestTime"}
+              }
+            }
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
+            ResponseTemplates:
+              application/json: |
+                {
+                  "success": true,
+                  "orderId": "$context.requestId",
+                  "message": "Order created successfully"
+                }
+
+  OrderOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref AppApi
+      ResourceId: !Ref OrderResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+      Integration:
+        Type: MOCK
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
+
+  # Chat API Resources
+  ChatResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref AppApi
+      ParentId: !GetAtt AppApi.RootResourceId
+      PathPart: chat
+
+  ChatPostMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref AppApi
+      ResourceId: !Ref ChatResource
+      HttpMethod: POST
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: !Ref ApiGatewayAuthorizer
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+        - StatusCode: 401
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+      Integration:
+        Type: AWS
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:dynamodb:action/BatchWriteItem'
+        Credentials: !GetAtt ApiGatewayDynamoDBRole.Arn
+        RequestTemplates:
+          application/json: !Sub |
+            {
+              "RequestItems": {
+                "${ChatTable}": [
+                  #foreach($message in $input.path('$.messages'))
+                  {
+                    "PutRequest": {
+                      "Item": {
+                        "orderId": {"S": "$message.orderId"},
+                        "timestamp": {"N": "$message.timestamp"},
+                        "role": {"S": "$message.role"},
+                        "message": {"S": "$message.message"},
+                        "messageId": {"S": "$message.messageId"}
+                      }
+                    }
+                  }#if($foreach.hasNext),#end
+                  #end
+                ]
+              }
+            }
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
+            ResponseTemplates:
+              application/json: |
+                #set($inputRoot = $input.path('$'))
+                {
+                  "success": true,
+                  "message": "Chat messages saved successfully",
+                  "processedCount": #if($inputRoot.UnprocessedItems && $inputRoot.UnprocessedItems.size() > 0)$inputRoot.UnprocessedItems.size()#else$input.path('$.messages').size()#end
+                }
+
+  ChatOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref AppApi
+      ResourceId: !Ref ChatResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+      Integration:
+        Type: MOCK
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
+
+  ApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - MenuGetMethod
+      - MenuOptionsMethod
+      - LoyaltyGetMethod
+      - LoyaltyOptionsMethod
+      - CartPostMethod
+      - CartOptionsMethod
+      - OrderPostMethod
+      - OrderOptionsMethod
+      - ChatPostMethod
+      - ChatOptionsMethod
+    Properties:
+      RestApiId: !Ref AppApi
+      StageName: !Ref Environment
+
+  # ========================================
+  # S3 Bucket Cleanup Lambda (for stack deletion)
+  # ========================================
+  S3BucketCleanupLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-s3-bucket-cleanup"
+      Runtime: python3.12
+      Handler: index.lambda_handler
+      Role: !GetAtt S3BucketCleanupRole.Arn
+      Timeout: 900
+      ReservedConcurrentExecutions: 1
+      DeadLetterConfig:
+        TargetArn: !GetAtt LambdaDeadLetterQueue.Arn
+      Code:
+        ZipFile: |
+          import boto3
+          import cfnresponse
+          import json
+          
+          def lambda_handler(event, context):
+              print(f"Event: {json.dumps(event)}")
+              
+              if event['RequestType'] == 'Delete':
+                  s3 = boto3.client('s3')
+                  bucket_names = event['ResourceProperties']['BucketNames']
+                  
+                  for bucket_name in bucket_names:
+                      try:
+                          print(f"Cleaning up bucket: {bucket_name}")
+                          
+                          paginator = s3.get_paginator('list_object_versions')
+                          for page in paginator.paginate(Bucket=bucket_name):
+                              objects_to_delete = []
+                              
+                              if "Versions" in page:
+                                  objects_to_delete.extend([
+                                      {"Key": v["Key"], "VersionId": v["VersionId"]} 
+                                      for v in page["Versions"]
+                                  ])
+                              
+                              if "DeleteMarkers" in page:
+                                  objects_to_delete.extend([
+                                      {"Key": d["Key"], "VersionId": d["VersionId"]} 
+                                      for d in page["DeleteMarkers"]
+                                  ])
+                              
+                              if objects_to_delete:
+                                  s3.delete_objects(
+                                      Bucket=bucket_name,
+                                      Delete={'Objects': objects_to_delete, 'Quiet': True},
+                                      BypassGovernanceRetention=True
+                                  )
+                                  print(f"Deleted {len(objects_to_delete)} objects/versions from {bucket_name}")
+                          
+                          print(f"Successfully cleaned up bucket: {bucket_name}")
+                          
+                      except Exception as e:
+                          print(f"Error cleaning bucket {bucket_name}: {str(e)}")
+              
+              cfnresponse.send(event, context, cfnresponse.SUCCESS, {'message': 'Cleanup completed'})
+
+  S3BucketCleanupPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - s3:ListBucket
+              - s3:ListBucketVersions
+              - s3:DeleteObject
+              - s3:DeleteObjectVersion
+              - s3:GetObjectLockConfiguration
+              - s3:BypassGovernanceRetention
+            Resource:
+              - !Sub 'arn:aws:s3:::*menuimagesbucket*'
+              - !Sub 'arn:aws:s3:::*menuimagesbucket*/*'
+              - !Sub 'arn:aws:s3:::*accesslogsbucket*'
+              - !Sub 'arn:aws:s3:::*accesslogsbucket*/*'
+          - Effect: Allow
+            Action:
+              - sqs:SendMessage
+              - sqs:GetQueueAttributes
+            Resource: !Sub 'arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:*-lambda-dlq'
+
+  S3BucketCleanupRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - !Ref S3BucketCleanupPolicy
+
+  S3BucketCleanup:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken: !GetAtt S3BucketCleanupLambda.Arn
+      BucketNames:
+        - !Ref MenuImagesBucket
+        - !Ref AccessLogsBucket
+
+Outputs:
+  # Encryption Key Output
+  EncryptionKeyArn:
+    Description: KMS Key ARN for encryption
+    Value: !GetAtt EncryptionKey.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-EncryptionKeyArn"
+
+  KMSKeyArn:
+    Description: KMS Key ARN for Lambda environment encryption
+    Value: !GetAtt EncryptionKey.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-KMSKeyArn"
+
+  # Cognito Outputs
+  UserPoolId:
+    Description: Cognito User Pool ID
+    Value: !Ref CognitoUserPool
+    Export:
+      Name: !Sub "${AWS::StackName}-UserPoolId"
+
+  UserPoolClientId:
+    Description: Cognito User Pool Client ID
+    Value: !Ref AppClient
+    Export:
+      Name: !Sub "${AWS::StackName}-UserPoolClientId"
+
+  IdentityPoolId:
+    Description: Cognito Identity Pool ID
+    Value: !Ref CognitoIdentityPool
+    Export:
+      Name: !Sub "${AWS::StackName}-IdentityPoolId"
+
+  # User Information
+  CreatedUsername:
+    Description: Created Cognito username
+    Value: AppUser      
+
+  # Storage Outputs
+  MenuImagesBucketName:
+    Description: S3 Bucket for Menu Images
+    Value: !Ref MenuImagesBucket
+    Export:
+      Name: !Sub "${AWS::StackName}-MenuImagesBucket"
+
+  AccessLogsBucketName:
+    Description: S3 Bucket for Access Logs
+    Value: !Ref AccessLogsBucket
+    Export:
+      Name: !Sub "${AWS::StackName}-AccessLogsBucket"
+
+  CloudFrontDomainName:
+    Description: CloudFront Distribution Domain
+    Value: !GetAtt MenuImagesCloudFrontDistribution.DomainName
+    Export:
+      Name: !Sub "${AWS::StackName}-CloudFrontDomain"
+
+  # Database Outputs
+  MenuTableName:
+    Description: Menu DynamoDB Table Name
+    Value: !Ref MenuTable
+    Export:
+      Name: !Sub "${AWS::StackName}-MenuTable"
+
+  LoyaltyTableName:
+    Description: Loyalty DynamoDB Table Name
+    Value: !Ref LoyaltyTable
+    Export:
+      Name: !Sub "${AWS::StackName}-LoyaltyTable"
+
+  CartTableName:
+    Description: Cart DynamoDB Table Name
+    Value: !Ref CartTable
+    Export:
+      Name: !Sub "${AWS::StackName}-CartTable"
+
+  OrderTableName:
+    Description: Order DynamoDB Table Name
+    Value: !Ref OrderTable
+    Export:
+      Name: !Sub "${AWS::StackName}-OrderTable"
+
+  ChatTableName:
+    Description: Chat DynamoDB Table Name
+    Value: !Ref ChatTable
+    Export:
+      Name: !Sub "${AWS::StackName}-ChatTable"
+
+  # IAM Role Outputs
+  LambdaExecutionRoleArn:
+    Description: Lambda Execution Role ARN
+    Value: !GetAtt LambdaExecutionRole.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-LambdaRole"
+
+  menuApiUrl:
+    Description: Menu API Endpoint
+    Value: !Sub 'https://${AppApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/menu'
+    Export:
+      Name: !Sub "${AWS::StackName}-MenuApiUrl"
+
+  loyaltyApiUrl:
+    Description: Loyalty API Endpoint
+    Value: !Sub 'https://${AppApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/loyalty'
+    Export:
+      Name: !Sub "${AWS::StackName}-LoyaltyApiUrl"
+
+  cartApiUrl:
+    Description: Cart API Endpoint
+    Value: !Sub 'https://${AppApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/cart'
+    Export:
+      Name: !Sub "${AWS::StackName}-CartApiUrl"
+
+  orderApiUrl:
+    Description: Order API Endpoint
+    Value: !Sub 'https://${AppApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/order'
+    Export:
+      Name: !Sub "${AWS::StackName}-OrderApiUrl"
+
+  chatApiUrl:
+    Description: Chat API Endpoint
+    Value: !Sub 'https://${AppApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/chat'
+    Export:
+      Name: !Sub "${AWS::StackName}-ChatApiUrl"

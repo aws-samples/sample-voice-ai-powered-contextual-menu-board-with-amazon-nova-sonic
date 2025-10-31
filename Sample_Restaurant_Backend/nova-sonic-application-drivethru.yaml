@@ -1,0 +1,296 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Drive-Thru Application - Complete embedded menu with AI image generation and descriptions. Requires successful deployment of infrastructure stack.'
+
+Parameters:
+  InfrastructureStackName:
+    Type: String
+    Description: 'Name of the infrastructure stack to import values from'    
+
+Resources:
+  # ========================================
+  # Dead Letter Queue for Lambda Functions
+  # ========================================
+  
+  LambdaDeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub ${AWS::StackName}-lambda-dlq
+      MessageRetentionPeriod: 1209600
+      KmsMasterKeyId: alias/aws/sqs
+
+  LambdaDeadLetterQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref LambdaDeadLetterQueue
+      PolicyDocument:
+        Statement:
+          - Effect: Deny
+            Principal: "*"
+            Action: "sqs:*"
+            Resource: !GetAtt LambdaDeadLetterQueue.Arn
+            Condition:
+              Bool:
+                "aws:SecureTransport": "false"
+
+  DriveThruMenuLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.12
+      Handler: index.lambda_handler
+      Role:
+        Fn::ImportValue: !Sub "${InfrastructureStackName}-LambdaRole"
+      Timeout: 900
+      MemorySize: 1024
+      ReservedConcurrentExecutions: 10
+      DeadLetterConfig:
+        TargetArn: !GetAtt LambdaDeadLetterQueue.Arn
+      Environment:
+        Variables:
+          BUCKET_NAME:
+            Fn::ImportValue: !Sub "${InfrastructureStackName}-MenuImagesBucket"
+          CLOUDFRONT_DOMAIN:
+            Fn::ImportValue: !Sub "${InfrastructureStackName}-CloudFrontDomain"
+          NOVA_MODEL_ID: 'amazon.nova-canvas-v1:0'
+      KmsKeyArn:
+        Fn::ImportValue: !Sub "${InfrastructureStackName}-KMSKeyArn"
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import cfnresponse
+          import base64
+          import os
+          
+          DRIVETHRU_MENU = {
+              "categoryMapping": {
+                  "b": "burgers",
+                  "w": "wings", 
+                  "f": "fries",
+                  "d": "drinks",
+                  "s": "sauces",
+                  "c": "combos",
+                  "t": "desserts"
+              },
+              "imagePrompts": {
+                  "b1": {"name": "Classic Burger", "description": "A juicy beef patty with fresh lettuce, tomato, onion, and pickles on a toasted sesame seed bun", "prompt": "A delicious classic hamburger with lettuce, tomato, onion, and pickles on a sesame seed bun, centered in frame, professional food photography with centered composition"},
+                  "b2": {"name": "Cheese Burger", "description": "Our classic burger topped with melted American cheese for extra flavor", "prompt": "A mouth-watering cheeseburger with melted cheese, lettuce, tomato, and onion on a toasted bun, centered in frame, professional food photography with centered composition"},
+                  "b3": {"name": "Double Burger", "description": "Two juicy beef patties stacked high with cheese, lettuce, and tomato on a brioche bun", "prompt": "A gourmet double burger with two patties, cheese, lettuce, and tomato on a brioche bun, centered in frame, professional food photography with centered composition"},
+                  "b4": {"name": "Bacon Burger", "description": "Classic burger enhanced with crispy bacon strips, lettuce, tomato, and cheese", "prompt": "A bacon burger with crispy bacon, lettuce, tomato, and cheese on a sesame bun, centered in frame, professional food photography with centered composition"},
+                  "w1": {"name": "Buffalo Wings", "description": "Six pieces of crispy chicken wings tossed in tangy buffalo sauce, served with celery sticks", "prompt": "Six pieces of crispy buffalo chicken wings with orange buffalo sauce, served with celery sticks, centered in frame, professional food photography with centered composition"},
+                  "w2": {"name": "BBQ Wings", "description": "Six pieces of tender chicken wings glazed with our signature BBQ sauce", "prompt": "Six pieces of grilled BBQ chicken wings with glossy BBQ sauce, perfectly cooked, centered in frame, professional food photography with centered composition"},
+                  "w3": {"name": "Garlic Parmesan Wings", "description": "Six pieces of golden wings tossed in garlic butter and topped with fresh parmesan cheese", "prompt": "Six pieces of golden garlic parmesan chicken wings with herbs and parmesan cheese, centered in frame, professional food photography with centered composition"},
+                  "f1": {"name": "Regular Fries", "description": "Golden crispy french fries, perfectly seasoned with salt", "prompt": "Golden crispy french fries, perfectly seasoned with salt, served in a red container, centered in frame, professional food photography with centered composition"},
+                  "f2": {"name": "Cheese Fries", "description": "Our golden fries topped with melted cheese sauce for the ultimate indulgence", "prompt": "Golden fries topped with melted cheese sauce, appetizing and indulgent, centered in frame, professional food photography with centered composition"},
+                  "f3": {"name": "Loaded Fries", "description": "Fully loaded fries with melted cheese, crispy bacon bits, and sour cream", "prompt": "Loaded fries with cheese, bacon bits, and sour cream, fully loaded and appetizing, centered in frame, professional food photography with centered composition"},
+                  "d1": {"name": "Cola", "description": "Refreshing cola served ice-cold with the perfect amount of fizz", "prompt": "Professional food photography of a pristine cola drink in a clean, elegant glass. Crystal-clear ice cubes floating in the dark cola, with perfect carbonation bubbles"},
+                  "d2": {"name": "Lemonade", "description": "Fresh squeezed lemonade made with real lemons for that perfect sweet and tart balance", "prompt": "Professional beverage photography of a bright, refreshing lemonade in a clear glass. Vibrant yellow citrus hue with perfect clarity and transparency"},
+                  "d3": {"name": "Iced Tea", "description": "Freshly brewed iced tea served over ice for a refreshing experience", "prompt": "Professional beverage photography of a crystal-clear tall glass filled with golden-amber iced tea. Fresh ice cubes floating throughout the drink"},
+                  "d4": {"name": "Vanilla Milkshake", "description": "Thick and creamy milkshake made with premium ice cream and topped with whipped cream", "prompt": "Professional food photography of a luxurious milkshake in a classic tall glass. Perfectly swirled soft-serve peak extending above the rim"},
+                  "s1": {"name": "Ranch", "description": "Creamy ranch dressing made with herbs and spices, perfect for dipping", "prompt": "A single small round container of creamy white ranch dressing viewed from the side, positioned exactly in the center, professional food photography"},
+                  "s2": {"name": "BBQ Sauce", "description": "Our signature tangy BBQ sauce with a perfect balance of sweet and smoky flavors", "prompt": "A single small round container of dark BBQ sauce viewed from the side, positioned exactly in the center, professional food photography"},
+                  "s3": {"name": "Honey Mustard", "description": "Sweet honey mustard sauce that's perfect for chicken wings and fries", "prompt": "A single small round container of golden honey mustard sauce viewed from the side, positioned exactly in the center, professional food photography"},
+                  "t1": {"name": "Apple Pie Slice", "description": "Individual slice of classic apple pie with flaky crust and cinnamon-spiced apple filling", "prompt": "A single serving slice of apple pie in a white takeout box, golden flaky crust with cinnamon-spiced apple filling visible, quick service restaurant presentation, professional food photography with centered composition"},
+                  "t2": {"name": "Chocolate Pie Slice", "description": "Individual slice of rich chocolate cream pie with smooth filling and graham cracker crust", "prompt": "A single serving slice of chocolate cream pie in a white takeout box, rich dark chocolate filling with graham cracker crust visible, quick service restaurant presentation, professional food photography with centered composition"},
+                  "t3": {"name": "Vanilla Ice Cream Cone", "description": "Premium vanilla soft-serve ice cream in a crispy waffle cone", "prompt": "A vanilla soft-serve ice cream cone in a golden waffle cone, perfectly swirled creamy white ice cream, quick service restaurant style, professional food photography with centered composition"},
+                  "c1": {"name": "Burger Combo", "description": "Complete meal featuring our classic burger, crispy fries, and your choice of drink", "prompt": "A complete meal combo with burger, fries, and drink arranged together on a tray, centered in frame, classic fast food combo meal"},
+                  "c2": {"name": "Wings Combo", "description": "Six buffalo wings served with fries and a refreshing drink for the perfect meal", "prompt": "A wings combo meal with buffalo wings, fries, and soda arranged together, centered in frame, complete chicken wings meal"},
+                  "c3": {"name": "Family Meal Combo", "description": "Perfect for sharing - includes multiple burgers, wings, fries, and drinks for the whole family", "prompt": "A large family meal combo with multiple burgers, wings, fries, and drinks arranged on a large tray, centered in frame, family-sized portion"}
+              },
+              "menuItems": [
+                  {"id": "w1", "name": "Buffalo Wings (6 pieces)", "price": 7.99, "discount": "10", "category": ["wings", "Today's Special", "All Items"], "isCombo": False, "availableCustomizations": "[{\"id\":\"extra-sauce\",\"name\":\"Extra Sauce\",\"price\":0.79,\"isRemoval\":false},{\"id\":\"extra-spicy\",\"name\":\"Extra Spicy\",\"price\":0.49,\"isRemoval\":false}]", "items": "[]"},
+                  {"id": "b2", "name": "Cheese Burger", "price": 6.99, "discount": "10", "category": ["burgers", "Today's Special", "All Items"], "isCombo": False, "availableCustomizations": "[{\"id\":\"add-bacon\",\"name\":\"Bacon\",\"price\":1.49,\"isRemoval\":false},{\"id\":\"add-pickles\",\"name\":\"Pickles\",\"price\":0.49,\"isRemoval\":false},{\"id\":\"remove-onion\",\"name\":\"Onion\",\"price\":0,\"isRemoval\":true},{\"id\":\"remove-tomato\",\"name\":\"Tomato\",\"price\":0,\"isRemoval\":true},{\"id\":\"remove-cheese\",\"name\":\"Cheese\",\"price\":0,\"isRemoval\":true}]", "items": "[]"},
+                  {"id": "b1", "name": "Classic Burger", "price": 5.99, "category": ["burgers", "All Items"], "isCombo": False, "availableCustomizations": "[{\"id\":\"add-cheese\",\"name\":\"Cheese\",\"price\":0.99,\"isRemoval\":false},{\"id\":\"add-bacon\",\"name\":\"Bacon\",\"price\":1.49,\"isRemoval\":false},{\"id\":\"add-pickles\",\"name\":\"Pickles\",\"price\":0.49,\"isRemoval\":false},{\"id\":\"remove-onion\",\"name\":\"Onion\",\"price\":0,\"isRemoval\":true},{\"id\":\"remove-tomato\",\"name\":\"Tomato\",\"price\":0,\"isRemoval\":true}]", "items": "[]"},
+                  {"id": "b3", "name": "Double Burger", "price": 8.99, "category": ["burgers", "All Items"], "isCombo": False, "availableCustomizations": "[{\"id\":\"add-cheese\",\"name\":\"Cheese\",\"price\":0.99,\"isRemoval\":false},{\"id\":\"add-bacon\",\"name\":\"Bacon\",\"price\":1.49,\"isRemoval\":false},{\"id\":\"add-pickles\",\"name\":\"Pickles\",\"price\":0.49,\"isRemoval\":false},{\"id\":\"remove-onion\",\"name\":\"Onion\",\"price\":0,\"isRemoval\":true},{\"id\":\"remove-tomato\",\"name\":\"Tomato\",\"price\":0,\"isRemoval\":true}]", "items": "[]"},
+                  {"id": "b4", "name": "Bacon Burger", "price": 7.99, "category": ["burgers", "All Items"], "isCombo": False, "availableCustomizations": "[{\"id\":\"add-cheese\",\"name\":\"Cheese\",\"price\":0.99,\"isRemoval\":false},{\"id\":\"add-pickles\",\"name\":\"Pickles\",\"price\":0.49,\"isRemoval\":false},{\"id\":\"remove-onion\",\"name\":\"Onion\",\"price\":0,\"isRemoval\":true},{\"id\":\"remove-tomato\",\"name\":\"Tomato\",\"price\":0,\"isRemoval\":true},{\"id\":\"remove-bacon\",\"name\":\"Bacon\",\"price\":0,\"isRemoval\":true}]", "items": "[]"},
+                  {"id": "w2", "name": "BBQ Wings (6 pieces)", "price": 7.99, "category": ["wings", "All Items"], "isCombo": False, "availableCustomizations": "[{\"id\":\"extra-sauce\",\"name\":\"Extra Sauce\",\"price\":0.79,\"isRemoval\":false}]", "items": "[]"},
+                  {"id": "w3", "name": "Garlic Parmesan Wings (6 pieces)", "price": 8.49, "category": ["wings", "All Items"], "isCombo": False, "availableCustomizations": "[{\"id\":\"extra-sauce\",\"name\":\"Extra Sauce\",\"price\":0.79,\"isRemoval\":false},{\"id\":\"extra-parmesan\",\"name\":\"Extra Parmesan\",\"price\":0.99,\"isRemoval\":false}]", "items": "[]"},
+                  {"id": "f1", "name": "Regular Fries", "price": 2.99, "category": ["fries", "All Items"], "isCombo": False, "availableCustomizations": "[{\"id\":\"add-cheese\",\"name\":\"Cheese\",\"price\":0.99,\"isRemoval\":false},{\"id\":\"add-bacon\",\"name\":\"Bacon Bits\",\"price\":1.29,\"isRemoval\":false},{\"id\":\"add-ranch\",\"name\":\"Ranch Drizzle\",\"price\":0.79,\"isRemoval\":false}]", "items": "[]"},
+                  {"id": "f2", "name": "Cheese Fries", "price": 3.99, "category": ["fries", "All Items"], "isCombo": False, "availableCustomizations": "[{\"id\":\"add-bacon\",\"name\":\"Bacon Bits\",\"price\":1.29,\"isRemoval\":false},{\"id\":\"add-ranch\",\"name\":\"Ranch Drizzle\",\"price\":0.79,\"isRemoval\":false},{\"id\":\"remove-cheese\",\"name\":\"No Cheese\",\"price\":0,\"isRemoval\":true}]", "items": "[]"},
+                  {"id": "f3", "name": "Loaded Fries", "price": 4.99, "category": ["fries", "All Items"], "isCombo": False, "availableCustomizations": "[{\"id\":\"add-ranch\",\"name\":\"Ranch Drizzle\",\"price\":0.79,\"isRemoval\":false},{\"id\":\"remove-cheese\",\"name\":\"No Cheese\",\"price\":0,\"isRemoval\":true},{\"id\":\"remove-bacon\",\"name\":\"No Bacon\",\"price\":0,\"isRemoval\":true},{\"id\":\"remove-sour-cream\",\"name\":\"No Sour Cream\",\"price\":0,\"isRemoval\":true}]", "items": "[]"},
+                  {"id": "d1", "name": "Cola", "price": 1.99, "category": ["drinks", "All Items"], "isCombo": False, "availableCustomizations": "[{\"id\":\"add-ice\",\"name\":\"Extra Ice\",\"price\":0,\"isRemoval\":false},{\"id\":\"remove-ice\",\"name\":\"No Ice\",\"price\":0,\"isRemoval\":true}]", "items": "[]"},
+                  {"id": "d2", "name": "Lemonade", "price": 2.49, "category": ["drinks", "All Items"], "isCombo": False, "availableCustomizations": "[{\"id\":\"add-ice\",\"name\":\"Extra Ice\",\"price\":0,\"isRemoval\":false},{\"id\":\"remove-ice\",\"name\":\"No Ice\",\"price\":0,\"isRemoval\":true}]", "items": "[]"},
+                  {"id": "d3", "name": "Iced Tea", "price": 1.99, "category": ["drinks", "All Items"], "isCombo": False, "availableCustomizations": "[{\"id\":\"add-ice\",\"name\":\"Extra Ice\",\"price\":0,\"isRemoval\":false},{\"id\":\"remove-ice\",\"name\":\"No Ice\",\"price\":0,\"isRemoval\":true},{\"id\":\"add-lemon\",\"name\":\"Lemon\",\"price\":0.25,\"isRemoval\":false}]", "items": "[]"},
+                  {"id": "d4", "name": "Vanilla Milkshake", "price": 3.99, "category": ["drinks", "All Items"], "isCombo": False, "availableCustomizations": "[{\"id\":\"add-whipped-cream\",\"name\":\"Whipped Cream\",\"price\":0.5,\"isRemoval\":false},{\"id\":\"add-cherry\",\"name\":\"Cherry\",\"price\":0.25,\"isRemoval\":false}]", "items": "[]"},
+                  {"id": "s1", "name": "Ranch", "price": 0.5, "category": ["sauces", "All Items"], "isCombo": False, "availableCustomizations": "[]", "items": "[]"},
+                  {"id": "s2", "name": "BBQ Sauce", "price": 0.5, "category": ["sauces", "All Items"], "isCombo": False, "availableCustomizations": "[]", "items": "[]"},
+                  {"id": "s3", "name": "Honey Mustard", "price": 0.5, "category": ["sauces", "All Items"], "isCombo": False, "availableCustomizations": "[]", "items": "[]"},
+                  {"id": "c1", "name": "Burger Combo", "price": 9.99, "category": ["combos", "All Items"], "isCombo": True, "availableCustomizations": "[]", "items": "[{\"id\":\"cb1\",\"name\":\"Classic Burger\",\"price\":5.99,\"category\":\"burgers\",\"isCombo\":false,\"availableCustomizations\":[{\"id\":\"add-cheese\",\"name\":\"Cheese\",\"price\":0.99,\"isRemoval\":false},{\"id\":\"remove-onion\",\"name\":\"No Onion\",\"price\":0,\"isRemoval\":true}]},{\"id\":\"cf1\",\"name\":\"Regular Fries\",\"price\":2.99,\"category\":\"fries\",\"isCombo\":false,\"availableCustomizations\":[]},{\"id\":\"cd1\",\"name\":\"Cola\",\"price\":1.99,\"category\":\"drinks\",\"isCombo\":false,\"availableCustomizations\":[{\"id\":\"remove-ice\",\"name\":\"No Ice\",\"price\":0,\"isRemoval\":true}]}]"},
+                  {"id": "c2", "name": "Wings Combo", "price": 11.99, "category": ["combos", "All Items"], "isCombo": True, "availableCustomizations": "[]", "items": "[{\"id\":\"cw1\",\"name\":\"Buffalo Wings (6 pieces)\",\"price\":7.99,\"category\":\"wings\",\"isCombo\":false,\"availableCustomizations\":[{\"id\":\"extra-sauce\",\"name\":\"Extra Sauce\",\"price\":0.79,\"isRemoval\":false}]},{\"id\":\"cf2\",\"name\":\"Regular Fries\",\"price\":2.99,\"category\":\"fries\",\"isCombo\":false,\"availableCustomizations\":[]},{\"id\":\"cd2\",\"name\":\"Cola\",\"price\":1.99,\"category\":\"drinks\",\"isCombo\":false,\"availableCustomizations\":[]}]"},
+                  {"id": "c3", "name": "Family Meal Combo", "price": 24.99, "category": ["combos", "All Items"], "isCombo": True, "availableCustomizations": "[]", "items": "[{\"id\":\"cfb1\",\"name\":\"Classic Burger (2)\",\"price\":11.98,\"category\":\"burgers\",\"isCombo\":false,\"availableCustomizations\":[]},{\"id\":\"cfw1\",\"name\":\"Buffalo Wings (6 pieces)\",\"price\":7.99,\"category\":\"wings\",\"isCombo\":false,\"availableCustomizations\":[]},{\"id\":\"cff1\",\"name\":\"Regular Fries (2)\",\"price\":5.98,\"category\":\"fries\",\"isCombo\":false,\"availableCustomizations\":[]},{\"id\":\"cfd1\",\"name\":\"Cola (2)\",\"price\":3.98,\"category\":\"drinks\",\"isCombo\":false,\"availableCustomizations\":[]}]"},
+                  {"id": "t1", "name": "Apple Pie Slice", "price": 3.99, "category": ["desserts", "All Items"], "isCombo": False, "availableCustomizations": "[]", "items": "[]"},
+                  {"id": "t2", "name": "Chocolate Pie Slice", "price": 4.49, "category": ["desserts", "All Items"], "isCombo": False, "availableCustomizations": "[]", "items": "[]"},
+                  {"id": "t3", "name": "Vanilla Ice Cream Cone", "price": 2.99, "category": ["desserts", "All Items"], "isCombo": False, "availableCustomizations": "[]", "items": "[]"}
+              ]
+          }
+          
+          def lambda_handler(event, context):
+              try:
+                  if event['RequestType'] in ['Create', 'Update']:
+                      print("=== Starting Complete Drive-Thru Menu Population ===")
+                      
+                      dynamodb = boto3.client('dynamodb')
+                      s3 = boto3.client('s3')
+                      bedrock = boto3.client('bedrock-runtime')
+                      
+                      menu_table_name = event['ResourceProperties']['MenuTableName']
+                      bucket_name = os.environ['BUCKET_NAME']
+                      cloudfront_domain = os.environ['CLOUDFRONT_DOMAIN']
+                      nova_model_id = os.environ['NOVA_MODEL_ID']
+                      
+                      print("=== STEP 1: AI Image Generation ===")
+                      generated_images, ai_success_count = generate_all_images(
+                          s3, bedrock, bucket_name, cloudfront_domain, nova_model_id
+                      )
+                      
+                      print("=== STEP 2: Database Population ===")
+                      inserted_count = populate_database(dynamodb, menu_table_name, generated_images)
+                      
+                      print("=== STEP 3: Sample Customer Creation ===")
+                      loyalty_table_name = event['ResourceProperties']['LoyaltyTableName']
+                      sample_customer = {
+                          'phone': {'S': '4691234567'},
+                          'customerId': {'S': 'cust-001'},
+                          'name': {'S': 'John Smith'},
+                          'email': {'S': 'john.smith@example.com'},
+                          'createdAt': {'S': '2025-01-01T00:00:00Z'},
+                          'loyaltyPoints': {'N': '150'}
+                      }
+                      
+                      try:
+                          dynamodb.put_item(TableName=loyalty_table_name, Item=sample_customer)
+                          print("✓ Sample customer inserted successfully")
+                      except Exception as e:
+                          print(f"✗ Error inserting sample customer: {str(e)}")
+                      
+                      print("=== COMPLETE DRIVE-THRU MENU LOADED ===")
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {
+                          'message': 'Complete drive-thru menu populated successfully',
+                          'items_inserted': inserted_count,
+                          'ai_images_generated': ai_success_count
+                      })
+                  else:
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+                      
+              except Exception as e:
+                  print(f'ERROR: {str(e)}')
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {'error': str(e)})
+          
+          def generate_ai_image(bedrock_client, prompt, item_id, nova_model_id):
+              try:
+                  print(f"Generating AI image for {item_id}")
+                  seed_value = hash(item_id) % 1000
+                  
+                  request_body = {
+                      "taskType": "TEXT_IMAGE",
+                      "textToImageParams": {
+                          "text": prompt + ", professional food photography",
+                          "negativeText": "messy, unprofessional, poor lighting"
+                      },
+                      "imageGenerationConfig": {
+                          "numberOfImages": 1,
+                          "height": 352,
+                          "width": 1024,
+                          "cfgScale": 7.5,
+                          "seed": seed_value
+                      }
+                  }
+                  
+                  response = bedrock_client.invoke_model(
+                      modelId=nova_model_id,
+                      body=json.dumps(request_body),
+                      contentType='application/json',
+                      accept='application/json'
+                  )
+                  
+                  response_body = json.loads(response['body'].read())
+                  if 'images' in response_body and len(response_body['images']) > 0:
+                      return base64.b64decode(response_body['images'][0])
+                  return None
+                  
+              except Exception as e:
+                  print(f'AI generation failed for {item_id}: {str(e)}')
+                  return None
+          
+          def upload_image_to_s3(s3_client, image_data, item_id, bucket_name):
+              try:
+                  prefix = item_id[0]
+                  category = DRIVETHRU_MENU['categoryMapping'].get(prefix, 'misc')
+                  key = f'{category}/{item_id}-ai.jpg'
+                  
+                  s3_client.put_object(
+                      Bucket=bucket_name, 
+                      Key=key, 
+                      Body=image_data, 
+                      ContentType='image/jpeg', 
+                      CacheControl='max-age=31536000'
+                  )
+                  
+                  return key
+                  
+              except Exception as e:
+                  print(f'S3 upload failed for {item_id}: {str(e)}')
+                  return None
+          
+          def generate_all_images(s3_client, bedrock_client, bucket_name, cloudfront_domain, nova_model_id):
+              generated_images = {}
+              ai_success_count = 0
+              
+              for item_id, item_data in DRIVETHRU_MENU['imagePrompts'].items():
+                  try:
+                      image_data = generate_ai_image(bedrock_client, item_data['prompt'], item_id, nova_model_id)
+                      if image_data:
+                          key = upload_image_to_s3(s3_client, image_data, item_id, bucket_name)
+                          if key:
+                              ai_success_count += 1
+                              image_url = f'https://{cloudfront_domain}/{key}'
+                              generated_images[item_id] = image_url
+                              print(f"✓ Generated image for {item_id}")
+                              
+                  except Exception as e:
+                      print(f'✗ ERROR processing {item_id}: {str(e)}')
+                      continue
+              
+              return generated_images, ai_success_count
+          
+          def populate_database(dynamodb_client, menu_table_name, generated_images):
+              inserted_count = 0
+              
+              for item_data in DRIVETHRU_MENU['menuItems']:
+                  try:
+                      item_id = item_data['id']
+                      image_url = generated_images.get(item_id)
+                      
+                      description = DRIVETHRU_MENU['imagePrompts'].get(item_id, {}).get('description', '')
+                      
+                      item = {
+                          'id': {'S': item_data['id']},
+                          'name': {'S': item_data['name']},
+                          'description': {'S': description},
+                          'price': {'N': str(item_data['price'])},
+                          'category': {'SS': item_data['category']},
+                          'isCombo': {'BOOL': item_data['isCombo']},
+                          'availableCustomizations': {'S': item_data['availableCustomizations']},
+                          'items': {'S': item_data['items']}
+                      }
+                      if 'discount' in item_data and item_data['discount']:
+                          item['discount'] = {'N': item_data['discount']}                      
+                      if image_url:
+                          item['image'] = {'S': image_url}
+                      
+                      dynamodb_client.put_item(TableName=menu_table_name, Item=item)
+                      inserted_count += 1
+                  except Exception as e:
+                      print(f"✗ ERROR inserting {item_data.get('id')}: {str(e)}")
+              
+              print(f"Successfully inserted {inserted_count} menu items")
+              return inserted_count
+
+  DriveThruMenuPopulation:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken: !GetAtt DriveThruMenuLambda.Arn
+      MenuTableName:
+        Fn::ImportValue: !Sub "${InfrastructureStackName}-MenuTable"
+      LoyaltyTableName:
+        Fn::ImportValue: !Sub "${InfrastructureStackName}-LoyaltyTable"
